@@ -1,0 +1,83 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { captureToolHandler, mockRunJavaResult } from "../test-utils.js";
+
+const mockRunJava = vi.fn();
+vi.mock("../lib/process.js", () => ({
+  runJava: (...args: any[]) => mockRunJava(...args),
+  sanitizeExtraArgs: (args: string[]) => args,
+}));
+
+vi.mock("../lib/schemas.js", () => ({
+  absolutePath: { describe: () => ({ _def: {} }) } as any,
+}));
+
+import { registerTlcGenerateTraceSpec } from "./tlc-generate-trace-spec.js";
+
+describe("tlc_generate_trace_spec", () => {
+  let handler: (params: any) => Promise<any>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handler = captureToolHandler(registerTlcGenerateTraceSpec);
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        stdout: "SpecTE.tla written to /specs/SpecTE.tla\n",
+      }),
+    );
+  });
+
+  it("includes -generateSpecTE flag", async () => {
+    await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const args = mockRunJava.mock.calls[0][0].args;
+    expect(args).toContain("-generateSpecTE");
+  });
+
+  it("includes -nomonolith when monolith is false", async () => {
+    await handler({ tla_file: "/specs/Spec.tla", monolith: false });
+    const args = mockRunJava.mock.calls[0][0].args;
+    expect(args).toContain("-nomonolith");
+  });
+
+  it("omits -nomonolith when monolith is true", async () => {
+    await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const args = mockRunJava.mock.calls[0][0].args;
+    expect(args).not.toContain("-nomonolith");
+  });
+
+  it("includes -tool and -modelcheck", async () => {
+    await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const args = mockRunJava.mock.calls[0][0].args;
+    expect(args).toContain("-tool");
+    expect(args).toContain("-modelcheck");
+  });
+
+  it("passes custom cfg_file", async () => {
+    await handler({ tla_file: "/specs/Spec.tla", monolith: true, cfg_file: "/other/Spec.cfg" });
+    const args = mockRunJava.mock.calls[0][0].args;
+    expect(args).toContain("-config");
+    expect(args).toContain("/other/Spec.cfg");
+  });
+
+  it("sets cwd to dirname of tla_file", async () => {
+    await handler({ tla_file: "/specs/sub/Spec.tla", monolith: true });
+    expect(mockRunJava.mock.calls[0][0].cwd).toBe("/specs/sub");
+  });
+
+  it("reports error on failure with no SpecTE", async () => {
+    mockRunJava.mockResolvedValue(mockRunJavaResult({
+      exitCode: 1,
+      stdout: "Error: Spec has no behaviors\n",
+    }));
+
+    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.success).toBe(false);
+    expect(parsed.error).toBeTruthy();
+  });
+
+  it("catches thrown errors", async () => {
+    mockRunJava.mockRejectedValue(new Error("boom"));
+    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    expect(result.isError).toBe(true);
+  });
+});
