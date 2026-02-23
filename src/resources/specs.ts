@@ -52,14 +52,19 @@ export function registerResources(server: McpServer): void {
       const { workspace } = loadConfig();
       const filename = String(variables.filename);
 
-      // Validate: no path traversal
-      if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+      // Validate: no path traversal and only .tla/.cfg files
+      if (
+        filename.includes("..") ||
+        filename.includes("/") ||
+        filename.includes("\\") ||
+        !(filename.endsWith(".tla") || filename.endsWith(".cfg"))
+      ) {
         return {
           contents: [
             {
               uri: uri.href,
               mimeType: "text/plain",
-              text: "Error: invalid filename (path traversal not allowed)",
+              text: "Error: invalid filename (must be a .tla or .cfg file with no path traversal)",
             },
           ],
         };

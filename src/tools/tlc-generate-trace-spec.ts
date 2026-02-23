@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJava } from "../lib/process.js";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename } from "node:path";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
@@ -44,7 +44,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         }
 
         if (extra_args) {
-          args.push(...extra_args);
+          args.push(...sanitizeExtraArgs(extra_args));
         }
 
         args.push(tla_file);

@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename } from "node:path";
-import { runJava } from "../lib/process.js";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 
 export function registerTlcCoverage(server: McpServer): void {
@@ -40,7 +40,7 @@ export function registerTlcCoverage(server: McpServer): void {
 
         // Extra args
         if (params.extra_args) {
-          args.push(...params.extra_args);
+          args.push(...sanitizeExtraArgs(params.extra_args));
         }
 
         // Spec file goes last
@@ -55,11 +55,13 @@ export function registerTlcCoverage(server: McpServer): void {
         const output = result.stdout + "\n" + result.stderr;
         const parsed = parseTlcOutput(output);
 
-        const status = parsed.violations.length > 0
-          ? "violation"
-          : parsed.errors.length > 0
-            ? "error"
-            : "success";
+        const status = result.timedOut
+          ? "timeout"
+          : parsed.violations.length > 0
+            ? "violation"
+            : parsed.errors.length > 0
+              ? "error"
+              : "success";
 
         return {
           content: [
