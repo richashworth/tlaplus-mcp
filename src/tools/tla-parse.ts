@@ -40,11 +40,24 @@ export function registerTlaParse(server: McpServer): void {
 
         // Parse semantic errors: "Semantic error(s):" followed by error lines
         // Pattern: "line <line>, col <col> to line <line>, col <col> of module <mod>"
-        const semanticErrRe = /line\s+(\d+),\s*col\s+(\d+)\s+to\s+line\s+\d+,\s*col\s+\d+\s+of\s+module\s+(\S+)/g;
-        while ((match = semanticErrRe.exec(output)) !== null) {
-          // Get the message from the line(s) before this location
+        // Walk backwards from each location match to find the actual error description
+        const lines = output.split("\n");
+        const semanticErrRe = /line\s+(\d+),\s*col\s+(\d+)\s+to\s+line\s+\d+,\s*col\s+\d+\s+of\s+module\s+(\S+)/;
+        for (let i = 0; i < lines.length; i++) {
+          match = semanticErrRe.exec(lines[i]);
+          if (!match) continue;
+          // Walk backwards to find the preceding non-empty line (the error description)
+          let description = "";
+          for (let j = i - 1; j >= 0; j--) {
+            const prev = lines[j].trim();
+            if (prev.length > 0) {
+              description = prev;
+              break;
+            }
+          }
+          const locationStr = match[0];
           errors.push({
-            message: match[0],
+            message: description ? `${description} — ${locationStr}` : locationStr,
             location: {
               file: match[3],
               line: parseInt(match[1], 10),
