@@ -8,13 +8,14 @@ import { dirname, basename, join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
     "tlc_check",
     "Run TLC model checker in exhaustive breadth-first mode to verify a TLA+ specification. Checks all reachable states against invariants, properties, and (optionally) deadlock freedom.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla specification file"),
+      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
       cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
       workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
       deadlock: z.boolean().default(true).describe("Check for deadlock (default true). Set false to disable deadlock checking."),

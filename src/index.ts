@@ -40,6 +40,19 @@ registerTlaStateGraph(server);
 // Register resources
 registerResources(server);
 
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  await server.close();
+  process.exit(0);
+});
+process.on("SIGTERM", async () => {
+  await server.close();
+  process.exit(0);
+});
+
 // Start server
 const transport = new StdioServerTransport();
-await server.connect(transport);
+await server.connect(transport).catch((err) => {
+  console.error("Failed to start MCP server:", err);
+  process.exit(1);
+});

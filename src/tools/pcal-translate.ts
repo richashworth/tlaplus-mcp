@@ -5,13 +5,14 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerPcalTranslate(server: McpServer): void {
   server.tool(
     "pcal_translate",
     "Translate PlusCal algorithm embedded in a TLA+ file to TLA+. Modifies the .tla file in-place by inserting/updating the TLA+ translation between the \\* BEGIN TRANSLATION and \\* END TRANSLATION markers.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla file containing PlusCal code"),
+      tla_file: absolutePath.describe("Absolute path to the .tla file containing PlusCal code"),
       fairness: z
         .enum(["wf", "sf", "wfNext", "nof"])
         .default("nof")
