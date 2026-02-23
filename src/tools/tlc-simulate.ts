@@ -8,7 +8,7 @@ import { dirname, basename } from "node:path";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcSimulate(server: McpServer): void {
   server.tool(
@@ -28,6 +28,7 @@ export function registerTlcSimulate(server: McpServer): void {
     },
     async (params) => {
       try {
+        validateFileExists(params.tla_file, "TLA+ file");
         const cwd = dirname(params.tla_file);
         const specName = basename(params.tla_file);
 
@@ -97,7 +98,7 @@ export function registerTlcSimulate(server: McpServer): void {
           violations: parsed.violations,
           errors: parsed.errors,
           coverage: parsed.coverage,
-          raw_output: output.trim(),
+          raw_output: truncateOutput(output),
         });
       } catch (err: unknown) {
         return formatToolError(err);

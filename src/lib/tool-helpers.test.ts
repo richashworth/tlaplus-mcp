@@ -5,6 +5,8 @@ import {
   deriveStatus,
   formatToolResponse,
   formatToolError,
+  truncateOutput,
+  validateFileExists,
 } from "./tool-helpers.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
 
@@ -95,5 +97,37 @@ describe("formatToolError", () => {
     const result = formatToolError(404);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("404");
+  });
+});
+
+describe("truncateOutput", () => {
+  it("returns short string as-is (trimmed)", () => {
+    expect(truncateOutput("  hello world  ")).toBe("hello world");
+  });
+
+  it("truncates string exceeding maxBytes with suffix", () => {
+    const input = "a".repeat(200);
+    const result = truncateOutput(input, 100);
+    expect(result).toContain("[truncated]");
+    expect(Buffer.byteLength(result, "utf-8")).toBeLessThanOrEqual(100 + 15);
+    expect(result.startsWith("a".repeat(100))).toBe(true);
+  });
+
+  it("respects custom maxBytes parameter", () => {
+    const input = "abcdefghij";
+    expect(truncateOutput(input, 5)).toContain("[truncated]");
+    expect(truncateOutput(input, 20)).toBe("abcdefghij");
+  });
+});
+
+describe("validateFileExists", () => {
+  it("throws for non-existent file with descriptive message", () => {
+    expect(() => validateFileExists("/no/such/file.tla", "TLA+ file")).toThrow(
+      "TLA+ file not found: /no/such/file.tla",
+    );
+  });
+
+  it("does not throw for existing file", () => {
+    expect(() => validateFileExists("package.json", "Config")).not.toThrow();
   });
 });

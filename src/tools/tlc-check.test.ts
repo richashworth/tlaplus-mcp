@@ -20,6 +20,7 @@ vi.mock("../lib/schemas.js", () => ({
 
 vi.mock("node:fs", () => ({
   mkdirSync: vi.fn(),
+  existsSync: vi.fn(() => true),
 }));
 
 import { registerTlcCheck } from "./tlc-check.js";

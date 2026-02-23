@@ -10,6 +10,10 @@ vi.mock("../lib/schemas.js", () => ({
   absolutePath: { describe: () => ({ _def: {} }) } as any,
 }));
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}));
+
 const mockExecFileSync = vi.fn();
 vi.mock("node:child_process", () => ({
   execFileSync: (...args: any[]) => mockExecFileSync(...args),

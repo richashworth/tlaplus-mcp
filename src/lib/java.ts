@@ -54,7 +54,7 @@ export async function resolveJar(): Promise<string> {
 async function downloadJar(): Promise<string> {
   mkdirSync(DEFAULT_JAR_DIR, { recursive: true });
 
-  const response = await fetch(JAR_URL);
+  const response = await fetch(JAR_URL, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) {
     throw new Error(
       `Failed to download tla2tools.jar from ${JAR_URL}: ${response.status} ${response.statusText}`

@@ -9,7 +9,7 @@ import { mkdirSync } from "node:fs";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
@@ -30,6 +30,7 @@ export function registerTlcCheck(server: McpServer): void {
     },
     async (params) => {
       try {
+        validateFileExists(params.tla_file, "TLA+ file");
         const cwd = dirname(params.tla_file);
         const specName = basename(params.tla_file);
 
@@ -73,6 +74,8 @@ export function registerTlcCheck(server: McpServer): void {
         let dumpFile: string | undefined;
         if (params.generate_states) {
           const dumpPath = params.dump_path ?? join(cwd, "states");
+          // Only create parent directories when a custom dump path is specified;
+          // the default "states" path is relative to cwd which already exists.
           if (params.dump_path) {
             mkdirSync(dirname(dumpPath), { recursive: true });
           }
@@ -107,7 +110,7 @@ export function registerTlcCheck(server: McpServer): void {
           errors: parsed.errors,
           coverage: parsed.coverage,
           ...(dumpFile ? { dump_file: dumpFile } : {}),
-          raw_output: output.trim(),
+          raw_output: truncateOutput(output),
         });
       } catch (err: unknown) {
         return formatToolError(err);

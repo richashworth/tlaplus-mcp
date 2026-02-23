@@ -6,7 +6,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerPcalTranslate(server: McpServer): void {
   server.tool(
@@ -38,6 +38,7 @@ export function registerPcalTranslate(server: McpServer): void {
     },
     async ({ tla_file, fairness, termination, no_cfg, label, line_width }) => {
       try {
+        validateFileExists(tla_file, "TLA+ file");
         const args: string[] = [];
 
         if (fairness !== "nof") {
@@ -90,7 +91,7 @@ export function registerPcalTranslate(server: McpServer): void {
           errors,
           labels_added: labelsAdded,
           output_file: outputFile,
-          raw_output: output.trim(),
+          raw_output: truncateOutput(output),
         });
       } catch (err: unknown) {
         return formatToolError(err);

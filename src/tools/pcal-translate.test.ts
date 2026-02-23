@@ -10,6 +10,10 @@ vi.mock("../lib/schemas.js", () => ({
   absolutePath: { describe: () => ({ _def: {} }) } as any,
 }));
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}));
+
 import { registerPcalTranslate } from "./pcal-translate.js";
 
 describe("pcal_translate", () => {

@@ -11,6 +11,10 @@ vi.mock("../lib/schemas.js", () => ({
   absolutePath: { describe: () => ({ _def: {} }) } as any,
 }));
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}));
+
 import { registerTlcCoverage } from "./tlc-coverage.js";
 
 describe("tlc_coverage", () => {

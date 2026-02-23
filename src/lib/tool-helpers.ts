@@ -8,6 +8,7 @@
  * - formatting tool responses and errors
  */
 
+import { existsSync } from "node:fs";
 import type { RunJavaResult } from "./process.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
 
@@ -30,6 +31,21 @@ export function deriveStatus(
   if (parsed.violations.length > 0) return "violation";
   if (parsed.errors.length > 0) return "error";
   return "success";
+}
+
+/** Truncate output to stay within a byte-size budget. */
+export function truncateOutput(output: string, maxBytes: number = 102400): string {
+  const trimmed = output.trim();
+  if (Buffer.byteLength(trimmed, "utf-8") <= maxBytes) return trimmed;
+  const truncated = Buffer.from(trimmed).subarray(0, maxBytes).toString("utf-8");
+  return truncated + "\n[truncated]";
+}
+
+/** Validate that a file exists, throwing a descriptive error if not. */
+export function validateFileExists(filePath: string, label: string): void {
+  if (!existsSync(filePath)) {
+    throw new Error(`${label} not found: ${filePath}`);
+  }
 }
 
 /** Format a successful tool response as MCP content. */

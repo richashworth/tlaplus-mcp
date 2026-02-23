@@ -104,8 +104,8 @@ export function registerTlaEvaluate(server: McpServer): void {
               trimmed.startsWith("Model-checking") ||
               trimmed.startsWith("Running") ||
               trimmed.startsWith("Implied-temporal") ||
-              trimmed.startsWith("The") ||
-              trimmed.startsWith("Checking") ||
+              trimmed.startsWith("The model ") ||
+              trimmed.startsWith("Checking temporal ") ||
               trimmed.startsWith("Progress") ||
               trimmed.startsWith("Semantic processing")
             ) {

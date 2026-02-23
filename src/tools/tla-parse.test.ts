@@ -10,6 +10,10 @@ vi.mock("../lib/schemas.js", () => ({
   absolutePath: { describe: () => ({ _def: {} }) } as any,
 }));
 
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => true),
+}));
+
 import { registerTlaParse } from "./tla-parse.js";
 
 describe("tla_parse", () => {
@@ -77,6 +81,34 @@ describe("tla_parse", () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.valid).toBe(false);
     expect(parsed.errors.length).toBeGreaterThan(0);
+  });
+
+  it("captures SANY error description from preceding line", async () => {
+    const sanyOutput = [
+      "Parsing file /specs/Test.tla",
+      "",
+      "Semantic errors:",
+      "",
+      "*** Errors: 1",
+      "",
+      "Unknown operator: `Foo'.",
+      "",
+      "line 5, col 3 to line 5, col 5 of module Test",
+      "",
+    ].join("\n");
+
+    mockRunJava.mockResolvedValue(mockRunJavaResult({
+      exitCode: 1,
+      stdout: sanyOutput,
+    }));
+
+    const result = await handler({ tla_file: "/specs/Test.tla" });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.valid).toBe(false);
+    expect(parsed.errors.length).toBe(1);
+    expect(parsed.errors[0].message).toContain("Unknown operator: `Foo'.");
+    expect(parsed.errors[0].message).toContain("line 5, col 3 to line 5, col 5 of module Test");
+    expect(parsed.errors[0].location).toEqual({ file: "Test", line: 5, col: 3 });
   });
 
   it("catches thrown errors", async () => {

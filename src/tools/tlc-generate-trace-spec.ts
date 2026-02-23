@@ -6,8 +6,9 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
+import { existsSync } from "node:fs";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
@@ -30,6 +31,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
     },
     async ({ tla_file, cfg_file, monolith, extra_args }) => {
       try {
+        validateFileExists(tla_file, "TLA+ file");
         const dir = dirname(tla_file);
         const args: string[] = [];
 
@@ -82,7 +84,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           }
         }
 
-        const success = result.exitCode === 0 || tlaFile !== null;
+        const success = result.exitCode === 0 || (tlaFile !== null && existsSync(tlaFile));
 
         let error: string | null = null;
         if (!success) {
@@ -95,7 +97,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           spec_te_tla: tlaFile,
           spec_te_cfg: cfgFile,
           error,
-          raw_output: output.trim(),
+          raw_output: truncateOutput(output),
         });
       } catch (err: unknown) {
         return formatToolError(err);
