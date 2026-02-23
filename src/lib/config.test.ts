@@ -43,6 +43,16 @@ describe("loadConfig", () => {
     expect(loadConfig().timeout).toBe(60);
   });
 
+  it("falls back to default timeout when TLC_TIMEOUT is not a number", () => {
+    process.env.TLC_TIMEOUT = "abc";
+    expect(loadConfig().timeout).toBe(300);
+  });
+
+  it("falls back to default timeout when TLC_TIMEOUT is empty", () => {
+    process.env.TLC_TIMEOUT = "";
+    expect(loadConfig().timeout).toBe(300);
+  });
+
   it("reads TLC_WORKSPACE", () => {
     process.env.TLC_WORKSPACE = "/my/specs";
     expect(loadConfig().workspace).toBe("/my/specs");
