@@ -5,8 +5,8 @@
  * Ported from Python: tlaplus-workflow/scripts/dot-to-json.py (disambiguate_actions)
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type VarMap = Record<string, any>;
+import type { VarMap } from "./types.js";
+import { compactDiff } from "./diff-utils.js";
 
 export interface TransitionEdge {
   source: string;
@@ -18,23 +18,6 @@ export interface DisambiguatedTransition {
   action: string;
   label: string;
   target: string;
-}
-
-function short(v: unknown): string {
-  return typeof v === "string" ? v : String(v);
-}
-
-function compactDiff(
-  srcVars: VarMap,
-  tgtVars: VarMap
-): Array<[string, string, string]> {
-  const diffs: Array<[string, string, string]> = [];
-  for (const k of Object.keys(srcVars)) {
-    if (k in tgtVars && JSON.stringify(srcVars[k]) !== JSON.stringify(tgtVars[k])) {
-      diffs.push([k, short(srcVars[k]), short(tgtVars[k])]);
-    }
-  }
-  return diffs;
 }
 
 function disambiguateGroup(
