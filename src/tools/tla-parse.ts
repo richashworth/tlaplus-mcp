@@ -6,6 +6,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 interface ParseError {
   message: string;
@@ -26,7 +27,7 @@ export function registerTlaParse(server: McpServer): void {
           args: [tla_file],
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
         const errors: ParseError[] = [];
         const modulesParsed: string[] = [];
 
@@ -86,24 +87,11 @@ export function registerTlaParse(server: McpServer): void {
 
         const valid = result.exitCode === 0 && errors.length === 0;
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                { valid, errors, modules_parsed: modulesParsed, raw_output: output.trim() },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          valid, errors, modules_parsed: modulesParsed, raw_output: output.trim(),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );

@@ -9,6 +9,7 @@ import { mkdirSync } from "node:fs";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
+import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
@@ -35,7 +36,7 @@ export function registerTlcCheck(server: McpServer): void {
         const args: string[] = ["-modelcheck", "-tool"];
 
         // Config file
-        const cfgFile = params.cfg_file ?? params.tla_file.replace(/\.tla$/, ".cfg");
+        const cfgFile = params.cfg_file ?? defaultCfgPath(params.tla_file);
         args.push("-config", cfgFile);
 
         // Workers
@@ -93,45 +94,23 @@ export function registerTlcCheck(server: McpServer): void {
           cwd,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
+        const status = deriveStatus(parsed, result.timedOut);
 
-        const status = result.timedOut
-          ? "timeout"
-          : parsed.violations.length > 0
-            ? "violation"
-            : parsed.errors.length > 0
-              ? "error"
-              : "success";
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  status,
-                  states_found: parsed.statesFound ?? 0,
-                  distinct_states: parsed.statesDistinct ?? 0,
-                  duration: parsed.duration ?? null,
-                  violations: parsed.violations,
-                  errors: parsed.errors,
-                  coverage: parsed.coverage,
-                  ...(dumpFile ? { dump_file: dumpFile } : {}),
-                  raw_output: output.trim(),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          status,
+          states_found: parsed.statesFound ?? 0,
+          distinct_states: parsed.statesDistinct ?? 0,
+          duration: parsed.duration ?? null,
+          violations: parsed.violations,
+          errors: parsed.errors,
+          coverage: parsed.coverage,
+          ...(dumpFile ? { dump_file: dumpFile } : {}),
+          raw_output: output.trim(),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );

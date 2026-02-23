@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
   server.tool(
@@ -51,7 +52,7 @@ export function registerTlaEvaluate(server: McpServer): void {
           timeout: 30,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
 
         // Try structured tool-mode parsing first: look for @!@!@STARTMSG/@!@!@ENDMSG markers
         // and extract the body of message code 2186 (PrintT output).
@@ -123,20 +124,9 @@ export function registerTlaEvaluate(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ result: evaluated, error, raw_output: output.trim() }, null, 2),
-            },
-          ],
-        };
+        return formatToolResponse({ result: evaluated, error, raw_output: output.trim() });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       } finally {
         // Clean up temp files
         try { unlinkSync(tlaPath); } catch { /* ignore */ }

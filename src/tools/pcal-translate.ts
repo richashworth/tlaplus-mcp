@@ -6,6 +6,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 export function registerPcalTranslate(server: McpServer): void {
   server.tool(
@@ -62,7 +63,7 @@ export function registerPcalTranslate(server: McpServer): void {
           args,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
         const errors: string[] = [];
         const labelsAdded: string[] = [];
 
@@ -84,30 +85,15 @@ export function registerPcalTranslate(server: McpServer): void {
         // Determine output file (same as input for in-place translation)
         const outputFile = tla_file;
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  success,
-                  errors,
-                  labels_added: labelsAdded,
-                  output_file: outputFile,
-                  raw_output: output.trim(),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          success,
+          errors,
+          labels_added: labelsAdded,
+          output_file: outputFile,
+          raw_output: output.trim(),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );
