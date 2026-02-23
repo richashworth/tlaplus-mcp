@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
-import { dirname, basename } from "node:path";
+import { dirname, basename, join } from "node:path";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
@@ -59,8 +59,8 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
 
         // Look for generated SpecTE files
         const baseName = basename(tla_file, ".tla");
-        const specTeTla = `${dir}/${baseName}_SpecTE.tla`;
-        const specTeCfg = `${dir}/${baseName}_SpecTE.cfg`;
+        const specTeTla = join(dir, `${baseName}_SpecTE.tla`);
+        const specTeCfg = join(dir, `${baseName}_SpecTE.cfg`);
 
         // Also check for the standard "SpecTE" naming
         let tlaFile: string | null = null;
@@ -75,8 +75,8 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         // Check common output patterns for the generated files
         if (!tlaFile) {
           if (output.includes("SpecTE.tla") || output.includes("_SpecTE.tla")) {
-            tlaFile = output.includes("_SpecTE.tla") ? specTeTla : `${dir}/SpecTE.tla`;
-            cfgFile = output.includes("_SpecTE.cfg") ? specTeCfg : `${dir}/SpecTE.cfg`;
+            tlaFile = output.includes("_SpecTE.tla") ? specTeTla : join(dir, "SpecTE.tla");
+            cfgFile = output.includes("_SpecTE.cfg") ? specTeCfg : join(dir, "SpecTE.cfg");
           }
         }
 
