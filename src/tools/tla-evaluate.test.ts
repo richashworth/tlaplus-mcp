@@ -85,6 +85,35 @@ describe("tla_evaluate", () => {
     expect(parsed.error).toContain("Unknown operator");
   });
 
+  it("does not discard PrintT output starting with 'The' or 'Checking' in fallback mode", async () => {
+    const stdout = [
+      "TLC2 Version 2.18",
+      "Starting SANY...",
+      "The answer is 42",
+      "Finished in 00:00:01",
+    ].join("\n");
+
+    mockRunJava.mockResolvedValue(mockRunJavaResult({ stdout }));
+
+    const result = await handler({ expression: '"The answer is 42"' });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.result).toBe("The answer is 42");
+
+    // Also verify "Checking" prefix is preserved
+    const stdout2 = [
+      "TLC2 Version 2.18",
+      "Starting SANY...",
+      "Checking done, result OK",
+      "Finished in 00:00:01",
+    ].join("\n");
+
+    mockRunJava.mockResolvedValue(mockRunJavaResult({ stdout: stdout2 }));
+
+    const result2 = await handler({ expression: '"Checking done, result OK"' });
+    const parsed2 = JSON.parse(result2.content[0].text);
+    expect(parsed2.result).toBe("Checking done, result OK");
+  });
+
   it("catches thrown errors", async () => {
     mockRunJava.mockRejectedValue(new Error("spawn failed"));
 

@@ -11,6 +11,11 @@ vi.mock("../lib/schemas.js", () => ({
   absolutePath: { describe: () => ({ _def: {} }) } as any,
 }));
 
+const mockExistsSync = vi.fn();
+vi.mock("node:fs", () => ({
+  existsSync: (...args: any[]) => mockExistsSync(...args),
+}));
+
 import { registerTlcGenerateTraceSpec } from "./tlc-generate-trace-spec.js";
 
 describe("tlc_generate_trace_spec", () => {
@@ -18,6 +23,7 @@ describe("tlc_generate_trace_spec", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
     handler = captureToolHandler(registerTlcGenerateTraceSpec);
     mockRunJava.mockResolvedValue(
       mockRunJavaResult({
@@ -73,6 +79,18 @@ describe("tlc_generate_trace_spec", () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.success).toBe(false);
     expect(parsed.error).toBeTruthy();
+  });
+
+  it("reports failure when SpecTE.tla appears in error output but file does not exist", async () => {
+    mockExistsSync.mockReturnValue(false);
+    mockRunJava.mockResolvedValue(mockRunJavaResult({
+      exitCode: 1,
+      stdout: "Error: failed to generate SpecTE.tla\n",
+    }));
+
+    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.success).toBe(false);
   });
 
   it("catches thrown errors", async () => {

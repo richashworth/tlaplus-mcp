@@ -6,6 +6,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
+import { existsSync } from "node:fs";
 import { absolutePath } from "../lib/schemas.js";
 import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
@@ -82,7 +83,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           }
         }
 
-        const success = result.exitCode === 0 || tlaFile !== null;
+        const success = result.exitCode === 0 || (tlaFile !== null && existsSync(tlaFile));
 
         let error: string | null = null;
         if (!success) {
