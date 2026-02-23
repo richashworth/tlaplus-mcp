@@ -136,36 +136,32 @@ function compactDiff(
 
 function normalizeForCompare(v: unknown): unknown {
   if (Array.isArray(v)) {
-    const normed = v.map(normalizeForCompare);
-    try {
-      normed.sort((a, b) => String(a).localeCompare(String(b)));
-    } catch {
-      // ignore sort failures
-    }
-    return normed;
+    return v.map(normalizeForCompare);
   }
   if (v !== null && typeof v === "object") {
     const result: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(v as Record<string, unknown>)) {
-      result[key] = normalizeForCompare(val);
+    for (const key of Object.keys(v as Record<string, unknown>).sort()) {
+      result[key] = normalizeForCompare((v as Record<string, unknown>)[key]);
     }
     return result;
   }
   return v;
 }
 
-function findMatchingState(
-  tvars: VarMap,
+function buildStateLookup(
   graphStates: Record<string, { vars: VarMap }>
-): string | null {
-  const normTvars = normalizeForCompare(tvars);
-  const normTvarsStr = JSON.stringify(normTvars);
+): Map<string, string> {
+  const lookup = new Map<string, string>();
   for (const [sid, sdata] of Object.entries(graphStates)) {
-    if (JSON.stringify(normalizeForCompare(sdata.vars)) === normTvarsStr) {
-      return sid;
-    }
+    const key = JSON.stringify(normalizeForCompare(sdata.vars));
+    lookup.set(key, sid);
   }
-  return null;
+  return lookup;
+}
+
+function lookupState(tvars: VarMap, lookup: Map<string, string>): string | null {
+  const key = JSON.stringify(normalizeForCompare(tvars));
+  return lookup.get(key) ?? null;
 }
 
 function violationSummary(
@@ -416,6 +412,7 @@ export function parseTlcViolationTraces(
   // Legacy plain-text parsing
   const lines = output.split("\n");
   const violations: ViolationTrace[] = [];
+  const stateLookup = buildStateLookup(graphStates);
 
   let i = 0;
   let vid = 0;
@@ -513,7 +510,7 @@ export function parseTlcViolationTraces(
     // Match trace states to graph states
     const traceEntries: ViolationTraceEntry[] = [];
     for (const ts of traceStates) {
-      const sid = findMatchingState(ts.vars, graphStates);
+      const sid = lookupState(ts.vars, stateLookup);
       traceEntries.push({ stateId: sid, action: ts.action });
     }
 
@@ -560,6 +557,7 @@ function parseTlcViolationTracesFromMessages(
   graphStates: Record<string, { vars: VarMap }>
 ): ViolationTrace[] {
   const violations: ViolationTrace[] = [];
+  const stateLookup = buildStateLookup(graphStates);
   let i = 0;
   let vid = 0;
 
@@ -671,7 +669,7 @@ function parseTlcViolationTracesFromMessages(
     // Match trace states to graph states
     const traceEntries: ViolationTraceEntry[] = [];
     for (const ts of traceStates) {
-      const sid = findMatchingState(ts.vars, graphStates);
+      const sid = lookupState(ts.vars, stateLookup);
       traceEntries.push({ stateId: sid, action: ts.action });
     }
 
