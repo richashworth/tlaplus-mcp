@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(tail:*)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(npm view:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api repos/modelcontextprotocol/typescript-sdk/contents/examples/server-quickstart/src 2>/dev/null | python3 -c \"import sys,json; items=json.load\\(sys.stdin\\); [print\\(i['name'], i['type']\\) for i in items]\" 2>/dev/null)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
