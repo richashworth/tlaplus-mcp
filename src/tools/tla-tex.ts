@@ -39,7 +39,7 @@ export function registerTlaTex(server: McpServer): void {
         // Check for LaTeX availability
         const latexCmd = output_format === "pdf" ? "pdflatex" : "latex";
         try {
-          execFileSync("which", [latexCmd], { stdio: "pipe" });
+          execFileSync(latexCmd, ["--version"], { stdio: "pipe" });
         } catch {
           return {
             content: [
