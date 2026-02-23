@@ -7,6 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
 import { absolutePath } from "../lib/schemas.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
@@ -56,7 +57,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           cwd: dir,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
 
         // Look for generated SpecTE files
         const baseName = basename(tla_file, ".tla");
@@ -89,30 +90,15 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  success,
-                  spec_te_tla: tlaFile,
-                  spec_te_cfg: cfgFile,
-                  error,
-                  raw_output: output.trim(),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          success,
+          spec_te_tla: tlaFile,
+          spec_te_cfg: cfgFile,
+          error,
+          raw_output: output.trim(),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );
