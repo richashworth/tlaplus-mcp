@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename, join } from "node:path";
+import { mkdirSync } from "node:fs";
 import { runJava } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 
@@ -22,6 +23,7 @@ export function registerTlcCheck(server: McpServer): void {
       diff_trace: z.boolean().optional().describe("Show only changed variables between trace states"),
       max_set_size: z.number().int().positive().optional().describe("Override TLC's max set size (default 1000000)"),
       generate_states: z.boolean().optional().describe("Dump state graph in DOT format"),
+      dump_path: z.string().optional().describe("Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed."),
       extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
     },
     async (params) => {
@@ -66,9 +68,14 @@ export function registerTlcCheck(server: McpServer): void {
         }
 
         // Generate state graph
+        let dumpFile: string | undefined;
         if (params.generate_states) {
-          const dumpPath = join(cwd, "states");
+          const dumpPath = params.dump_path ?? join(cwd, "states");
+          if (params.dump_path) {
+            mkdirSync(dirname(dumpPath), { recursive: true });
+          }
           args.push("-dump", "dot,actionlabels,colorize", dumpPath);
+          dumpFile = dumpPath + ".dot";
         }
 
         // Extra args
@@ -107,6 +114,7 @@ export function registerTlcCheck(server: McpServer): void {
                   violations: parsed.violations,
                   errors: parsed.errors,
                   coverage: parsed.coverage,
+                  ...(dumpFile ? { dump_file: dumpFile } : {}),
                   raw_output: output.trim(),
                 },
                 null,

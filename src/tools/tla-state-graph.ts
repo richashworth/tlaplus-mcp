@@ -26,12 +26,16 @@ export function registerTlaStateGraph(server: McpServer): void {
         .string()
         .optional()
         .describe("Absolute path to the TLC output file (for violation traces)"),
+      tlc_output: z
+        .string()
+        .optional()
+        .describe("Raw TLC output string (for violation traces). If both tlc_output and tlc_output_file are provided, tlc_output takes precedence."),
       format: z
         .enum(["dot", "structured", "playground"])
         .default("playground")
         .describe("Output format: 'dot' (raw), 'structured' (adjacency list), or 'playground' (full)"),
     },
-    async ({ dot_file, cfg_file, tlc_output_file, format }) => {
+    async ({ dot_file, cfg_file, tlc_output_file, tlc_output, format }) => {
       try {
         const dotContent = fs.readFileSync(dot_file, "utf-8");
         const graph = parseDot(dotContent);
@@ -118,9 +122,9 @@ export function registerTlaStateGraph(server: McpServer): void {
 
         // Parse TLC output for violation traces if provided
         let violations: unknown[] = [];
-        if (tlc_output_file) {
-          const tlcOutput = fs.readFileSync(tlc_output_file, "utf-8");
-          violations = parseTlcViolationTraces(tlcOutput, graph.states);
+        const tlcOutputStr = tlc_output ?? (tlc_output_file ? fs.readFileSync(tlc_output_file, "utf-8") : undefined);
+        if (tlcOutputStr) {
+          violations = parseTlcViolationTraces(tlcOutputStr, graph.states);
         }
 
         return {
