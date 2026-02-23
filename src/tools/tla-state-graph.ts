@@ -9,6 +9,7 @@ import { parseDot } from "../parsers/dot.js";
 import { parseCfg } from "../parsers/cfg.js";
 import { parseTlcViolationTraces } from "../parsers/tlc-output.js";
 import { disambiguateActions } from "../parsers/action-disambiguator.js";
+import { formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 const MAX_NODES = 50_000;
 
@@ -44,19 +45,9 @@ export function registerTlaStateGraph(server: McpServer): void {
 
         // Enforce size limit
         if (nodeCount > MAX_NODES) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify({
-                  error: "State graph too large",
-                  node_count: nodeCount,
-                  too_large: true,
-                }),
-              },
-            ],
-            isError: true,
-          };
+          return formatToolError(
+            new Error(`State graph too large (${nodeCount} nodes, max ${MAX_NODES})`),
+          );
         }
 
         // Raw DOT format
@@ -83,24 +74,13 @@ export function registerTlaStateGraph(server: McpServer): void {
             action: e.action,
           }));
 
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify(
-                  {
-                    node_count: nodeCount,
-                    edge_count: graph.edges.length,
-                    initial_state: graph.initialStateId,
-                    nodes,
-                    edges,
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-          };
+          return formatToolResponse({
+            node_count: nodeCount,
+            edge_count: graph.edges.length,
+            initial_state: graph.initialStateId,
+            nodes,
+            edges,
+          });
         }
 
         // Playground format: full output
@@ -127,30 +107,15 @@ export function registerTlaStateGraph(server: McpServer): void {
           violations = parseTlcViolationTraces(tlcOutputStr, graph.states);
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  initialStateId: graph.initialStateId,
-                  states,
-                  transitions,
-                  invariants,
-                  violations,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          initialStateId: graph.initialStateId,
+          states,
+          transitions,
+          invariants,
+          violations,
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );

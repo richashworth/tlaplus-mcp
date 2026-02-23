@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 import { execFileSync } from "node:child_process";
 
 export function registerTlaTex(server: McpServer): void {
@@ -41,17 +42,9 @@ export function registerTlaTex(server: McpServer): void {
         try {
           execFileSync("which", [latexCmd], { stdio: "pipe" });
         } catch {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify({
-                  error: `${latexCmd} not found on PATH. Install a LaTeX distribution (e.g., texlive or mactex) to use TLATeX.`,
-                }),
-              },
-            ],
-            isError: true,
-          };
+          return formatToolError(
+            new Error(`${latexCmd} not found on PATH. Install a LaTeX distribution (e.g., texlive or mactex) to use TLATeX.`),
+          );
         }
 
         const args: string[] = [];
@@ -79,7 +72,7 @@ export function registerTlaTex(server: McpServer): void {
           args,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
         const success = result.exitCode === 0;
 
         // Determine output file path
@@ -92,29 +85,14 @@ export function registerTlaTex(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLATeX exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  success,
-                  output_file: success ? outputFile : null,
-                  error,
-                  raw_output: output.trim(),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          success,
+          output_file: success ? outputFile : null,
+          error,
+          raw_output: output.trim(),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );

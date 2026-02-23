@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
@@ -51,7 +52,7 @@ export function registerTlaEvaluate(server: McpServer): void {
           timeout: 30,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
 
         // TLC PrintT outputs the value on its own line to stdout.
         // Look for the printed value — it appears before the "Finished" or after the
@@ -93,20 +94,9 @@ export function registerTlaEvaluate(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ result: evaluated, error, raw_output: output.trim() }, null, 2),
-            },
-          ],
-        };
+        return formatToolResponse({ result: evaluated, error, raw_output: output.trim() });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       } finally {
         // Clean up temp files
         try { unlinkSync(tlaPath); } catch { /* ignore */ }
