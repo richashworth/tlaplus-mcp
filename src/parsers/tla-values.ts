@@ -4,8 +4,7 @@
  * Ported from Python: tlaplus-workflow/scripts/dot-to-json.py (_ValueParser)
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TlaValue = any;
+import type { TlaValue, VarMap } from "./types.js";
 
 class ValueParser {
   private text: string;
@@ -259,8 +258,8 @@ export function parseTlaValue(text: string): TlaValue {
 /**
  * Parse a TLC state label (conjunction of /\ var = value) into a variable map.
  */
-export function parseStateLabel(label: string): Record<string, TlaValue> {
-  const variables: Record<string, TlaValue> = {};
+export function parseStateLabel(label: string): VarMap {
+  const variables: VarMap = {};
   const parts = label.split(/\/\\/);
   for (const part of parts) {
     const trimmed = part.trim();

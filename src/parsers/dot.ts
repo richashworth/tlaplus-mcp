@@ -5,9 +5,7 @@
  */
 
 import { parseStateLabel } from "./tla-values.js";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type VarMap = Record<string, any>;
+import type { VarMap } from "./types.js";
 
 export interface DotState {
   label: string;

@@ -5,9 +5,8 @@
  */
 
 import { parseStateLabel } from "./tla-values.js";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type VarMap = Record<string, any>;
+import type { VarMap } from "./types.js";
+import { short, compactDiff } from "./diff-utils.js";
 
 // -- Types -------------------------------------------------------------------
 
@@ -116,23 +115,6 @@ const STATE_HEADER_RE = /^State\s+(\d+):\s*(?:<(.+?)>)?/;
 const BACK_TO_STATE_RE = /^Back to state\s+(\d+)/;
 
 // -- Helpers -----------------------------------------------------------------
-
-function short(v: unknown): string {
-  return typeof v === "string" ? v : String(v);
-}
-
-function compactDiff(
-  srcVars: VarMap,
-  tgtVars: VarMap
-): Array<[string, string, string]> {
-  const diffs: Array<[string, string, string]> = [];
-  for (const k of Object.keys(srcVars)) {
-    if (k in tgtVars && JSON.stringify(srcVars[k]) !== JSON.stringify(tgtVars[k])) {
-      diffs.push([k, short(srcVars[k]), short(tgtVars[k])]);
-    }
-  }
-  return diffs;
-}
 
 function normalizeForCompare(v: unknown): unknown {
   if (Array.isArray(v)) {
