@@ -84,6 +84,7 @@ describe("MCP server integration", () => {
       const names = tools.map(t => t.name).sort();
       expect(names).toEqual([
         "pcal_translate",
+        "playground_init",
         "tla_evaluate",
         "tla_parse",
         "tla_state_graph",
