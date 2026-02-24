@@ -5,7 +5,6 @@ import {
   deriveStatus,
   formatToolResponse,
   formatToolError,
-  truncateOutput,
   validateFileExists,
 } from "./tool-helpers.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
@@ -102,43 +101,6 @@ describe("formatToolError", () => {
   });
 });
 
-describe("truncateOutput", () => {
-  it("returns short string as-is (trimmed)", () => {
-    expect(truncateOutput("  hello world  ")).toBe("hello world");
-  });
-
-  it("truncates string exceeding maxBytes with suffix", () => {
-    const input = "a".repeat(200);
-    const result = truncateOutput(input, 100);
-    expect(result).toContain("[truncated]");
-    expect(Buffer.byteLength(result, "utf-8")).toBeLessThanOrEqual(100 + 15);
-    expect(result.startsWith("a".repeat(100))).toBe(true);
-  });
-
-  it("respects custom maxBytes parameter", () => {
-    const input = "abcdefghij";
-    expect(truncateOutput(input, 5)).toContain("[truncated]");
-    expect(truncateOutput(input, 20)).toBe("abcdefghij");
-  });
-
-  it("does not produce U+FFFD when truncating multi-byte UTF-8", () => {
-    // Each emoji is 4 bytes in UTF-8; cutting at 5 bytes splits the second emoji
-    const input = "\u{1F600}\u{1F601}\u{1F602}"; // 3 emoji, 12 bytes
-    const result = truncateOutput(input, 5);
-    expect(result).not.toContain("\uFFFD");
-    expect(result).toContain("[truncated]");
-    // Should retain only the first complete emoji
-    expect(result.startsWith("\u{1F600}")).toBe(true);
-  });
-
-  it("handles 3-byte UTF-8 chars split mid-codepoint", () => {
-    // CJK character U+4E16 is 3 bytes; cutting at 4 bytes splits the second char
-    const input = "\u4E16\u754C\u4F60\u597D"; // 4 CJK chars, 12 bytes
-    const result = truncateOutput(input, 4);
-    expect(result).not.toContain("\uFFFD");
-    expect(result).toContain("[truncated]");
-  });
-});
 
 describe("validateFileExists", () => {
   it("throws for non-existent file with descriptive message", () => {

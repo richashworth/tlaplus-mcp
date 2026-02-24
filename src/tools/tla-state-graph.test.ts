@@ -74,24 +74,6 @@ describe("tla_state_graph", () => {
     expect(parsed.violations).toEqual([]);
   });
 
-  it("returns structured too_large response when exceeding MAX_NODES", async () => {
-    // Build a DOT with >50000 TLC-format nodes
-    const lines = ["digraph StateGraph {"];
-    for (let i = 0; i < 50_001; i++) {
-      lines.push(`${i} [label="/\\\\ x = ${i}"]`);
-    }
-    lines.push("}");
-    vi.mocked(fs.readFileSync).mockReturnValue(lines.join("\n"));
-
-    const result = await handler({ dot_file: "/specs/states.dot", format: "structured" });
-    expect(result.isError).toBeUndefined();
-    const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.status).toBe("too_large");
-    expect(parsed.too_large).toBe(true);
-    expect(parsed.node_count).toBe(50_001);
-    expect(parsed.max_nodes).toBe(50_000);
-  });
-
   it("validates dot_file exists", async () => {
     vi.mocked(existsSync).mockReturnValue(false);
 

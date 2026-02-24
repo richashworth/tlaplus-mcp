@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { combineOutput, formatToolResponse, formatToolError, truncateOutput } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 import { extractMessageBody } from "../parsers/tlc-output.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
@@ -103,7 +103,7 @@ export function registerTlaEvaluate(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return formatToolResponse({ status: error ? "error" : "success", result: evaluated, error, raw_output: truncateOutput(output) });
+        return formatToolResponse({ status: error ? "error" : "success", result: evaluated, error, raw_output: output });
       } catch (err: unknown) {
         return formatToolError(err);
       } finally {

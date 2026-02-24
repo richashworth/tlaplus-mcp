@@ -14,8 +14,6 @@ import { discoverHappyPaths } from "../parsers/happy-paths.js";
 import { absolutePath } from "../lib/schemas.js";
 import { formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
-const MAX_NODES = 50_000;
-
 export function registerTlaStateGraph(server: McpServer): void {
   server.tool(
     "tla_state_graph",
@@ -99,16 +97,6 @@ export function registerTlaStateGraph(server: McpServer): void {
         const graph = parseDot(dotContent);
 
         const nodeCount = Object.keys(graph.states).length;
-
-        // Enforce size limit
-        if (nodeCount > MAX_NODES) {
-          return formatToolResponse({
-            status: "too_large",
-            too_large: true,
-            node_count: nodeCount,
-            max_nodes: MAX_NODES,
-          });
-        }
 
         // Raw DOT format
         if (format === "dot") {

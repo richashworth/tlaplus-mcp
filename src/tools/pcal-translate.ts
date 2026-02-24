@@ -7,7 +7,7 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerPcalTranslate(server: McpServer): void {
   server.tool(
@@ -94,7 +94,7 @@ export function registerPcalTranslate(server: McpServer): void {
           errors,
           labels_added: labelsAdded,
           output_file: outputFile,
-          raw_output: truncateOutput(output),
+          raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);

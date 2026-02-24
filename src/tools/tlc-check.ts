@@ -9,7 +9,7 @@ import { mkdirSync } from "node:fs";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
+import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
@@ -110,7 +110,7 @@ export function registerTlcCheck(server: McpServer): void {
           errors: parsed.errors,
           coverage: parsed.coverage,
           ...(dumpFile ? { dump_file: dumpFile } : {}),
-          raw_output: truncateOutput(output),
+          raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);

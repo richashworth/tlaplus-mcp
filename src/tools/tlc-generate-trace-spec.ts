@@ -8,7 +8,7 @@ import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
 import { existsSync } from "node:fs";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
@@ -98,7 +98,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           spec_te_tla: tlaFile,
           spec_te_cfg: cfgFile,
           error,
-          raw_output: truncateOutput(output),
+          raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);

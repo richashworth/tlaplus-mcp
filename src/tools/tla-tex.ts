@@ -7,7 +7,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { execFileSync } from "node:child_process";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlaTex(server: McpServer): void {
   server.tool(
@@ -92,7 +92,7 @@ export function registerTlaTex(server: McpServer): void {
           success,
           output_file: success ? outputFile : null,
           error,
-          raw_output: truncateOutput(output),
+          raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);

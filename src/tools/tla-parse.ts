@@ -7,7 +7,7 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
+import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
 interface ParseError {
   message: string;
@@ -105,7 +105,7 @@ export function registerTlaParse(server: McpServer): void {
 
         return formatToolResponse({
           status: valid ? "success" : "error",
-          valid, errors, modules_parsed: modulesParsed, raw_output: truncateOutput(output),
+          valid, errors, modules_parsed: modulesParsed, raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);
