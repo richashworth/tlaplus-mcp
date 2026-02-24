@@ -58,7 +58,7 @@ export interface ViolationTrace {
 
 // -- Tool-mode message parsing -----------------------------------------------
 
-interface TlcMessage {
+export interface TlcMessage {
   code: number;
   severity: number;
   body: string;
@@ -72,7 +72,7 @@ const MSG_END_RE = /^@!@!@ENDMSG (\d+) @!@!@$/;
  * Returns `null` if the output doesn't contain any tool-mode markers,
  * allowing callers to fall back to the legacy plain-text parser.
  */
-function parseTlcMessages(output: string): TlcMessage[] | null {
+export function parseTlcMessages(output: string): TlcMessage[] | null {
   const lines = output.split("\n");
   const messages: TlcMessage[] = [];
   let current: { code: number; severity: number; bodyLines: string[] } | null = null;
@@ -107,6 +107,17 @@ function parseTlcMessages(output: string): TlcMessage[] | null {
   }
 
   return found ? messages : null;
+}
+
+/**
+ * Extract the body of the first TLC message with the given code.
+ * Returns the trimmed body, or null if not found or output is not tool-mode.
+ */
+export function extractMessageBody(output: string, code: number): string | null {
+  const messages = parseTlcMessages(output);
+  if (!messages) return null;
+  const msg = messages.find(m => m.code === code);
+  return msg ? msg.body.trim() : null;
 }
 
 // -- Regexes -----------------------------------------------------------------

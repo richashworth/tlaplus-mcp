@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseTlcOutput, parseTlcViolationTraces } from "./tlc-output.js";
+import { parseTlcOutput, parseTlcViolationTraces, parseTlcMessages, extractMessageBody } from "./tlc-output.js";
 
 describe("parseTlcOutput", () => {
   it("parses successful run with state counts", () => {
@@ -355,5 +355,60 @@ describe("parseTlcViolationTraces (tool mode)", () => {
 
     const traces = parseTlcViolationTraces(output, {});
     expect(traces).toHaveLength(0);
+  });
+});
+
+describe("parseTlcMessages", () => {
+  it("returns null for non-tool-mode output", () => {
+    expect(parseTlcMessages("TLC2 Version 2.18\nFinished")).toBeNull();
+  });
+
+  it("parses tool-mode messages into structured array", () => {
+    const output = [
+      "@!@!@STARTMSG 2186:0 @!@!@",
+      "42",
+      "@!@!@ENDMSG 2186 @!@!@",
+      "@!@!@STARTMSG 2199:0 @!@!@",
+      "10 states generated",
+      "@!@!@ENDMSG 2199 @!@!@",
+    ].join("\n");
+    const msgs = parseTlcMessages(output);
+    expect(msgs).toHaveLength(2);
+    expect(msgs![0]).toEqual({ code: 2186, severity: 0, body: "42" });
+    expect(msgs![1]).toEqual({ code: 2199, severity: 0, body: "10 states generated" });
+  });
+
+  it("captures multi-line message bodies", () => {
+    const output = [
+      "@!@!@STARTMSG 2186:0 @!@!@",
+      "<<1, 2,",
+      "  3>>",
+      "@!@!@ENDMSG 2186 @!@!@",
+    ].join("\n");
+    const msgs = parseTlcMessages(output);
+    expect(msgs![0].body).toBe("<<1, 2,\n  3>>");
+  });
+});
+
+describe("extractMessageBody", () => {
+  const toolOutput = [
+    "@!@!@STARTMSG 2186:0 @!@!@",
+    "  hello world  ",
+    "@!@!@ENDMSG 2186 @!@!@",
+    "@!@!@STARTMSG 2199:0 @!@!@",
+    "10 states",
+    "@!@!@ENDMSG 2199 @!@!@",
+  ].join("\n");
+
+  it("returns trimmed body for matching code", () => {
+    expect(extractMessageBody(toolOutput, 2186)).toBe("hello world");
+  });
+
+  it("returns null for non-matching code", () => {
+    expect(extractMessageBody(toolOutput, 9999)).toBeNull();
+  });
+
+  it("returns null for non-tool-mode output", () => {
+    expect(extractMessageBody("plain text output", 2186)).toBeNull();
   });
 });

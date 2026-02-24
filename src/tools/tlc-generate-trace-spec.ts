@@ -6,7 +6,9 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
+import { existsSync } from "node:fs";
 import { absolutePath } from "../lib/schemas.js";
+import { combineOutput, formatToolResponse, formatToolError, truncateOutput, validateFileExists } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
@@ -29,6 +31,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
     },
     async ({ tla_file, cfg_file, monolith, extra_args }) => {
       try {
+        validateFileExists(tla_file, "TLA+ file");
         const dir = dirname(tla_file);
         const args: string[] = [];
 
@@ -56,7 +59,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           cwd: dir,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
 
         // Look for generated SpecTE files
         const baseName = basename(tla_file, ".tla");
@@ -81,7 +84,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           }
         }
 
-        const success = result.exitCode === 0 || tlaFile !== null;
+        const success = result.exitCode === 0 || (tlaFile !== null && existsSync(tlaFile));
 
         let error: string | null = null;
         if (!success) {
@@ -89,30 +92,15 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  success,
-                  spec_te_tla: tlaFile,
-                  spec_te_cfg: cfgFile,
-                  error,
-                  raw_output: output.trim(),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return formatToolResponse({
+          success,
+          spec_te_tla: tlaFile,
+          spec_te_cfg: cfgFile,
+          error,
+          raw_output: truncateOutput(output),
+        });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       }
     },
   );

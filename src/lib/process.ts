@@ -33,7 +33,7 @@ export interface RunJavaResult {
 const BLOCKED_EXTRA_ARGS = new Set([
   "-dump",         // managed via generate_states/dump_path
   "-metadir",      // could redirect metadata to arbitrary paths
-  "-userFile",     // could write to arbitrary paths
+  "-userfile",     // could write to arbitrary paths
   "-tlafile",      // could overwrite arbitrary files
 ]);
 

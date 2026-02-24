@@ -9,6 +9,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { combineOutput, formatToolResponse, formatToolError, truncateOutput } from "../lib/tool-helpers.js";
+import { extractMessageBody } from "../parsers/tlc-output.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
   server.tool(
@@ -51,40 +53,10 @@ export function registerTlaEvaluate(server: McpServer): void {
           timeout: 30,
         });
 
-        const output = result.stdout + "\n" + result.stderr;
+        const output = combineOutput(result);
 
-        // Try structured tool-mode parsing first: look for @!@!@STARTMSG/@!@!@ENDMSG markers
-        // and extract the body of message code 2186 (PrintT output).
-        let evaluated: string | null = null;
-
-        const MSG_START = /^@!@!@STARTMSG (\d+):(\d+) @!@!@$/;
-        const MSG_END = /^@!@!@ENDMSG (\d+) @!@!@$/;
-        const allLines = result.stdout.split("\n");
-        let currentCode: number | null = null;
-        const bodyLines: string[] = [];
-
-        for (const line of allLines) {
-          const startMatch = MSG_START.exec(line);
-          if (startMatch) {
-            currentCode = parseInt(startMatch[1], 10);
-            bodyLines.length = 0;
-            continue;
-          }
-
-          const endMatch = MSG_END.exec(line);
-          if (endMatch && currentCode !== null) {
-            if (currentCode === 2186) {
-              evaluated = bodyLines.join("\n").trim();
-            }
-            currentCode = null;
-            bodyLines.length = 0;
-            continue;
-          }
-
-          if (currentCode !== null) {
-            bodyLines.push(line);
-          }
-        }
+        // Try structured tool-mode parsing: extract PrintT output (message code 2186)
+        let evaluated = extractMessageBody(result.stdout, 2186);
 
         // Fallback: prefix-blocklist parsing for non-tool-mode output
         if (evaluated === null) {
@@ -103,8 +75,8 @@ export function registerTlaEvaluate(server: McpServer): void {
               trimmed.startsWith("Model-checking") ||
               trimmed.startsWith("Running") ||
               trimmed.startsWith("Implied-temporal") ||
-              trimmed.startsWith("The") ||
-              trimmed.startsWith("Checking") ||
+              trimmed.startsWith("The model ") ||
+              trimmed.startsWith("Checking temporal ") ||
               trimmed.startsWith("Progress") ||
               trimmed.startsWith("Semantic processing")
             ) {
@@ -123,20 +95,9 @@ export function registerTlaEvaluate(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify({ result: evaluated, error, raw_output: output.trim() }, null, 2),
-            },
-          ],
-        };
+        return formatToolResponse({ result: evaluated, error, raw_output: truncateOutput(output) });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        };
+        return formatToolError(err);
       } finally {
         // Clean up temp files
         try { unlinkSync(tlaPath); } catch { /* ignore */ }
