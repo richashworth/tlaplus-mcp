@@ -134,4 +134,69 @@ describe("tla_state_graph", () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.invariants).toEqual(expect.arrayContaining(["TypeOK", "Liveness"]));
   });
+
+  it("returns partial=false and happyPaths in playground format", async () => {
+    vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
+
+    const result = await handler({ dot_file: "/specs/states.dot", format: "playground" });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.partial).toBe(false);
+    expect(parsed).toHaveProperty("happyPaths");
+    expect(Array.isArray(parsed.happyPaths)).toBe(true);
+    // The TLC_DOT graph has 1->2 with action "Next", so there should be a terminal path
+    expect(parsed.happyPaths.length).toBeGreaterThanOrEqual(1);
+    expect(parsed.happyPaths[0].trace[0].stateId).toBe("1");
+  });
+
+  it("returns traces_only graph with partial=true from TLC output", async () => {
+    const tlcOutput = `Error: Invariant TypeOK is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+`;
+
+    const result = await handler({
+      format: "playground",
+      traces_only: true,
+      tlc_output: tlcOutput,
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("success");
+    expect(parsed.partial).toBe(true);
+    expect(parsed.states).toHaveProperty("t1");
+    expect(parsed.states).toHaveProperty("t2");
+    expect(parsed.violations).toHaveLength(1);
+    expect(parsed.violations[0].type).toBe("invariant");
+    expect(parsed).toHaveProperty("happyPaths");
+  });
+
+  it("rejects traces_only without TLC output", async () => {
+    const result = await handler({
+      format: "playground",
+      traces_only: true,
+    });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("traces_only requires tlc_output");
+  });
+
+  it("rejects traces_only with non-playground format", async () => {
+    const result = await handler({
+      format: "dot",
+      traces_only: true,
+      tlc_output: "some output",
+    });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("traces_only mode only supports playground format");
+  });
+
+  it("requires dot_file when traces_only is false", async () => {
+    const result = await handler({ format: "playground" });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("dot_file is required");
+  });
 });

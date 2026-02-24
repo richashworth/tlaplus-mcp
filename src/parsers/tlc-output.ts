@@ -186,6 +186,228 @@ function violationSummary(
   return `${prefix} violated`;
 }
 
+// -- Raw trace extraction (shared by both violation trace and graph builders) --
+
+export interface RawTraceState {
+  action: string | null;
+  vars: VarMap;
+  label: string;
+}
+
+export interface RawTrace {
+  type: "invariant" | "deadlock" | "temporal";
+  name: string | null;
+  traceStates: RawTraceState[];
+  backToIndex: number | null;  // 0-based index into traceStates, or null
+}
+
+function extractRawTracesLegacy(output: string): RawTrace[] {
+  const lines = output.split("\n");
+  const traces: RawTrace[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trimEnd();
+
+    let vtype: "invariant" | "deadlock" | "temporal" | null = null;
+    let vname: string | null = null;
+
+    const invM = line.match(/^Error: Invariant (\S+) is violated\./);
+    if (invM) {
+      vtype = "invariant";
+      vname = invM[1];
+    }
+    if (line.includes("Deadlock reached")) {
+      vtype = "deadlock";
+    }
+    if (line.includes("Temporal properties were violated")) {
+      vtype = "temporal";
+    }
+
+    if (vtype === null) {
+      i++;
+      continue;
+    }
+
+    i++;
+    while (i < lines.length && !STATE_HEADER_RE.test(lines[i].trimEnd())) {
+      if (vtype === "temporal" && vname === null) {
+        const pm = lines[i].trimEnd().match(/^Error:\s+(\S+)\s+is violated/);
+        if (pm) vname = pm[1];
+      }
+      i++;
+    }
+
+    const traceStates: RawTraceState[] = [];
+    let backToIndex: number | null = null;
+
+    while (i < lines.length) {
+      const tline = lines[i].trimEnd();
+      const sm = STATE_HEADER_RE.exec(tline);
+      const bm = BACK_TO_STATE_RE.exec(tline);
+
+      if (bm) {
+        backToIndex = parseInt(bm[1], 10) - 1;
+        i++;
+        break;
+      }
+
+      if (sm) {
+        const actionInfo = sm[2] || null;
+        let actionName: string | null = null;
+        if (actionInfo) {
+          const am = actionInfo.match(/^(\w+)/);
+          if (am && am[1] !== "Initial") {
+            actionName = am[1];
+          }
+        }
+
+        const varLines: string[] = [];
+        i++;
+        while (i < lines.length) {
+          const vl = lines[i].trimEnd();
+          if (
+            !vl ||
+            STATE_HEADER_RE.test(vl) ||
+            BACK_TO_STATE_RE.test(vl) ||
+            vl.startsWith("Error:")
+          ) {
+            break;
+          }
+          varLines.push(vl);
+          i++;
+        }
+
+        const label = varLines.join("\n");
+        const tvars = parseStateLabel(label);
+        traceStates.push({ action: actionName, vars: tvars, label });
+      } else {
+        if (tline === "") {
+          i++;
+          continue;
+        }
+        break;
+      }
+    }
+
+    traces.push({ type: vtype, name: vname, traceStates, backToIndex });
+  }
+
+  return traces;
+}
+
+function extractRawTracesFromMessages(messages: TlcMessage[]): RawTrace[] {
+  const traces: RawTrace[] = [];
+  let i = 0;
+
+  while (i < messages.length) {
+    const msg = messages[i];
+
+    if (!VIOLATION_CODES.has(msg.code)) {
+      i++;
+      continue;
+    }
+
+    let vtype: "invariant" | "deadlock" | "temporal";
+    let vname: string | null = null;
+
+    if (msg.code === 2110 || msg.code === 2107) {
+      vtype = "invariant";
+      const invM = msg.body.match(/Invariant (\S+) is violated/);
+      if (invM) vname = invM[1];
+    } else if (msg.code === 2114) {
+      vtype = "deadlock";
+    } else {
+      vtype = "temporal";
+    }
+
+    i++;
+
+    if (vtype === "temporal") {
+      for (let j = i; j < messages.length && !VIOLATION_CODES.has(messages[j].code) && !STATE_CODES.has(messages[j].code); j++) {
+        if (messages[j].severity === 1) {
+          const tempM = messages[j].body.match(/(\S+)\s+is violated/);
+          if (tempM) {
+            vname = tempM[1];
+            break;
+          }
+        }
+      }
+    }
+
+    while (i < messages.length && !STATE_CODES.has(messages[i].code) && !SKIP_CODES.has(messages[i].code) && !VIOLATION_CODES.has(messages[i].code)) {
+      i++;
+    }
+
+    const traceStates: RawTraceState[] = [];
+    let backToIndex: number | null = null;
+
+    while (i < messages.length) {
+      const sm = messages[i];
+
+      if (SKIP_CODES.has(sm.code)) {
+        i++;
+        continue;
+      }
+
+      if (!STATE_CODES.has(sm.code)) {
+        break;
+      }
+
+      if (sm.code === 2122) {
+        const btM = sm.body.match(/Back to state\s*(?:<[^>]*>)?\s*(\d+)/);
+        if (!btM) {
+          const btM2 = sm.body.match(/(\d+)/);
+          if (btM2) backToIndex = parseInt(btM2[1], 10) - 1;
+        } else {
+          backToIndex = parseInt(btM[1], 10) - 1;
+        }
+        i++;
+        break;
+      }
+
+      if (sm.code === 2218) {
+        i++;
+        break;
+      }
+
+      const bodyLines = sm.body.split("\n");
+      let actionName: string | null = null;
+
+      let varStartIdx = 0;
+      if (bodyLines.length > 0) {
+        const headerM = bodyLines[0].match(/^\d+:\s*<(.+?)>/);
+        if (headerM) {
+          const am = headerM[1].match(/^(\w+)/);
+          if (am && am[1] !== "Initial") {
+            actionName = am[1];
+          }
+          varStartIdx = 1;
+        }
+      }
+
+      const varLines = bodyLines.slice(varStartIdx).filter(l => l.trim());
+      const label = varLines.join("\n");
+      const tvars = parseStateLabel(label);
+      traceStates.push({ action: actionName, vars: tvars, label });
+
+      i++;
+    }
+
+    traces.push({ type: vtype, name: vname, traceStates, backToIndex });
+  }
+
+  return traces;
+}
+
+function extractRawTraces(output: string): RawTrace[] {
+  const messages = parseTlcMessages(output);
+  if (messages !== null) {
+    return extractRawTracesFromMessages(messages);
+  }
+  return extractRawTracesLegacy(output);
+}
+
 // -- Main parsers ------------------------------------------------------------
 
 /**
@@ -389,148 +611,50 @@ export function parseTlcOutput(output: string): TlcResult {
   };
 }
 
-/**
- * Extract violation traces from TLC stdout and match them to graph states.
- */
-export function parseTlcViolationTraces(
-  output: string,
-  graphStates: Record<string, { vars: VarMap }>
+// -- Tool-mode message code sets ---------------------------------------------
+
+const VIOLATION_CODES = new Set([2110, 2107, 2114, 2116]);
+const STATE_CODES = new Set([2216, 2217, 2218, 2122]);
+const SKIP_CODES = new Set([2121, 2120]); // informational headers
+
+// -- Violation trace builder (from raw traces + graph state lookup) -----------
+
+function rawTracesToViolations(
+  rawTraces: RawTrace[],
+  stateLookup: Map<string, string>,
 ): ViolationTrace[] {
-  // Try tool-mode parsing first
-  const messages = parseTlcMessages(output);
-  if (messages !== null) {
-    return parseTlcViolationTracesFromMessages(messages, graphStates);
-  }
-
-  // Legacy plain-text parsing
-  const lines = output.split("\n");
   const violations: ViolationTrace[] = [];
-  const stateLookup = buildStateLookup(graphStates);
-
-  let i = 0;
   let vid = 0;
 
-  while (i < lines.length) {
-    const line = lines[i].trimEnd();
-
-    // Detect violation type
-    let vtype: "invariant" | "deadlock" | "temporal" | null = null;
-    let vname: string | null = null;
-
-    const invM = line.match(/^Error: Invariant (\S+) is violated\./);
-    if (invM) {
-      vtype = "invariant";
-      vname = invM[1];
-    }
-
-    if (line.includes("Deadlock reached")) {
-      vtype = "deadlock";
-    }
-
-    if (line.includes("Temporal properties were violated")) {
-      vtype = "temporal";
-    }
-
-    if (vtype === null) {
-      i++;
-      continue;
-    }
-
-    // Advance to trace
-    i++;
-    while (i < lines.length && !STATE_HEADER_RE.test(lines[i].trimEnd())) {
-      if (vtype === "temporal" && vname === null) {
-        const pm = lines[i].trimEnd().match(/^Error:\s+(\S+)\s+is violated/);
-        if (pm) vname = pm[1];
-      }
-      i++;
-    }
-
-    // Parse trace states
-    const traceStates: Array<{ action: string | null; vars: VarMap }> = [];
-    let backTo: string | null = null;
-
-    while (i < lines.length) {
-      const tline = lines[i].trimEnd();
-      const sm = STATE_HEADER_RE.exec(tline);
-      const bm = BACK_TO_STATE_RE.exec(tline);
-
-      if (bm) {
-        backTo = bm[1];
-        i++;
-        break;
-      }
-
-      if (sm) {
-        const actionInfo = sm[2] || null;
-        let actionName: string | null = null;
-        if (actionInfo) {
-          const am = actionInfo.match(/^(\w+)/);
-          if (am && am[1] !== "Initial") {
-            actionName = am[1];
-          }
-        }
-
-        // Gather variable lines
-        const varLines: string[] = [];
-        i++;
-        while (i < lines.length) {
-          const vl = lines[i].trimEnd();
-          if (
-            !vl ||
-            STATE_HEADER_RE.test(vl) ||
-            BACK_TO_STATE_RE.test(vl) ||
-            vl.startsWith("Error:")
-          ) {
-            break;
-          }
-          varLines.push(vl);
-          i++;
-        }
-
-        const label = varLines.join("\n");
-        const tvars = parseStateLabel(label);
-        traceStates.push({ action: actionName, vars: tvars });
-      } else {
-        if (tline === "") {
-          i++;
-          continue;
-        }
-        break;
-      }
-    }
-
-    // Match trace states to graph states
+  for (const raw of rawTraces) {
     const traceEntries: ViolationTraceEntry[] = [];
-    for (const ts of traceStates) {
+    for (const ts of raw.traceStates) {
       const sid = lookupState(ts.vars, stateLookup);
       traceEntries.push({ stateId: sid, action: ts.action });
     }
 
-    if (backTo !== null) {
-      const backIdx = parseInt(backTo, 10) - 1;
+    if (raw.backToIndex !== null) {
       let backSid: string | null = null;
-      if (backIdx >= 0 && backIdx < traceEntries.length) {
-        backSid = traceEntries[backIdx].stateId;
+      if (raw.backToIndex >= 0 && raw.backToIndex < traceEntries.length) {
+        backSid = traceEntries[raw.backToIndex].stateId;
       }
       traceEntries.push({ stateId: backSid, action: "Back to state" });
     }
 
-    // Generate summary
-    const summary = violationSummary(vtype, vname, traceStates);
+    const summary = violationSummary(raw.type, raw.name, raw.traceStates);
 
     vid++;
     const violation: ViolationTrace = {
       id: `v${vid}`,
-      type: vtype,
+      type: raw.type,
       summary,
       trace: traceEntries,
     };
-    if (vtype === "invariant" && vname) {
-      violation.invariant = vname;
+    if (raw.type === "invariant" && raw.name) {
+      violation.invariant = raw.name;
     }
-    if (vtype === "temporal" && vname) {
-      violation.property = vname;
+    if (raw.type === "temporal" && raw.name) {
+      violation.property = raw.name;
     }
 
     violations.push(violation);
@@ -539,161 +663,120 @@ export function parseTlcViolationTraces(
   return violations;
 }
 
-// -- Tool-mode violation trace parser ----------------------------------------
-
-const VIOLATION_CODES = new Set([2110, 2107, 2114, 2116]);
-const STATE_CODES = new Set([2216, 2217, 2218, 2122]);
-const SKIP_CODES = new Set([2121, 2120]); // informational headers
-
-function parseTlcViolationTracesFromMessages(
-  messages: TlcMessage[],
+/**
+ * Extract violation traces from TLC stdout and match them to graph states.
+ */
+export function parseTlcViolationTraces(
+  output: string,
   graphStates: Record<string, { vars: VarMap }>
 ): ViolationTrace[] {
-  const violations: ViolationTrace[] = [];
+  const rawTraces = extractRawTraces(output);
   const stateLookup = buildStateLookup(graphStates);
-  let i = 0;
+  return rawTracesToViolations(rawTraces, stateLookup);
+}
+
+// -- Traces-only graph builder -----------------------------------------------
+
+export interface TraceOnlyGraph {
+  states: Record<string, { label: string; vars: VarMap }>;
+  edges: Array<{ source: string; target: string; action: string }>;
+  initialStateId: string;
+  violations: ViolationTrace[];
+}
+
+/**
+ * Build a minimal graph from TLC output traces alone, without a DOT file.
+ * Assigns synthetic state IDs (t1, t2, ...) and deduplicates by variable equality.
+ */
+export function buildGraphFromTraces(output: string): TraceOnlyGraph {
+  const rawTraces = extractRawTraces(output);
+
+  // Build a state registry with deduplication by variable map
+  const varKeyToId = new Map<string, string>();
+  const states: Record<string, { label: string; vars: VarMap }> = {};
+  let nextId = 1;
+
+  function getOrCreateStateId(ts: RawTraceState): string {
+    const key = JSON.stringify(normalizeForCompare(ts.vars));
+    let id = varKeyToId.get(key);
+    if (!id) {
+      id = `t${nextId++}`;
+      varKeyToId.set(key, id);
+      states[id] = { label: ts.label, vars: ts.vars };
+    }
+    return id;
+  }
+
+  // Build edges and synthetic lookup for violations
+  const edgeSet = new Set<string>();
+  const edges: Array<{ source: string; target: string; action: string }> = [];
+  let initialStateId = "";
+
+  // For each raw trace, build a synthetic-ID lookup so violations reference synthetic IDs
+  const syntheticLookup = new Map<string, string>(); // same as varKeyToId, built incrementally
+
+  const violations: ViolationTrace[] = [];
   let vid = 0;
 
-  while (i < messages.length) {
-    const msg = messages[i];
-
-    if (!VIOLATION_CODES.has(msg.code)) {
-      i++;
-      continue;
-    }
-
-    // Determine violation type and name
-    let vtype: "invariant" | "deadlock" | "temporal";
-    let vname: string | null = null;
-
-    if (msg.code === 2110 || msg.code === 2107) {
-      vtype = "invariant";
-      const invM = msg.body.match(/Invariant (\S+) is violated/);
-      if (invM) vname = invM[1];
-    } else if (msg.code === 2114) {
-      vtype = "deadlock";
-    } else {
-      vtype = "temporal";
-    }
-
-    i++;
-
-    // For temporal violations, look for the property name in subsequent error messages
-    if (vtype === "temporal") {
-      for (let j = i; j < messages.length && !VIOLATION_CODES.has(messages[j].code) && !STATE_CODES.has(messages[j].code); j++) {
-        if (messages[j].severity === 1) {
-          const tempM = messages[j].body.match(/(\S+)\s+is violated/);
-          if (tempM) {
-            vname = tempM[1];
-            break;
-          }
-        }
-      }
-    }
-
-    // Advance past non-state, non-skip messages (e.g., property name errors)
-    while (i < messages.length && !STATE_CODES.has(messages[i].code) && !SKIP_CODES.has(messages[i].code) && !VIOLATION_CODES.has(messages[i].code)) {
-      i++;
-    }
-
-    // Collect trace states
-    const traceStates: Array<{ action: string | null; vars: VarMap }> = [];
-    let backTo: string | null = null;
-
-    while (i < messages.length) {
-      const sm = messages[i];
-
-      if (SKIP_CODES.has(sm.code)) {
-        i++;
-        continue;
-      }
-
-      if (!STATE_CODES.has(sm.code)) {
-        break;
-      }
-
-      if (sm.code === 2122) {
-        // Back to state (lasso)
-        const btM = sm.body.match(/Back to state\s*(?:<[^>]*>)?\s*(\d+)/);
-        if (!btM) {
-          // Try simpler pattern
-          const btM2 = sm.body.match(/(\d+)/);
-          if (btM2) backTo = btM2[1];
-        } else {
-          backTo = btM[1];
-        }
-        i++;
-        break;
-      }
-
-      if (sm.code === 2218) {
-        // Stuttering state — treat as end marker, no vars to parse
-        i++;
-        break;
-      }
-
-      // 2216 (initial state, no action) or 2217 (state with action)
-      const bodyLines = sm.body.split("\n");
-      let actionName: string | null = null;
-
-      // First line may contain state number and action info
-      // Format: "N: <ActionName line L, col C of module M>"
-      // or just variable lines for 2216
-      let varStartIdx = 0;
-      if (bodyLines.length > 0) {
-        const headerM = bodyLines[0].match(/^\d+:\s*<(.+?)>/);
-        if (headerM) {
-          const am = headerM[1].match(/^(\w+)/);
-          if (am && am[1] !== "Initial") {
-            actionName = am[1];
-          }
-          varStartIdx = 1;
-        }
-      }
-
-      const varLines = bodyLines.slice(varStartIdx).filter(l => l.trim());
-      const label = varLines.join("\n");
-      const tvars = parseStateLabel(label);
-      traceStates.push({ action: actionName, vars: tvars });
-
-      i++;
-    }
-
-    // Match trace states to graph states
+  for (const raw of rawTraces) {
     const traceEntries: ViolationTraceEntry[] = [];
-    for (const ts of traceStates) {
-      const sid = lookupState(ts.vars, stateLookup);
+    const traceIds: string[] = [];
+
+    for (let si = 0; si < raw.traceStates.length; si++) {
+      const ts = raw.traceStates[si];
+      const sid = getOrCreateStateId(ts);
+      traceIds.push(sid);
       traceEntries.push({ stateId: sid, action: ts.action });
+
+      if (initialStateId === "" && si === 0) {
+        initialStateId = sid;
+      }
+
+      // Add edge from previous state
+      if (si > 0) {
+        const src = traceIds[si - 1];
+        const action = ts.action ?? "Next";
+        const edgeKey = `${src}->${sid}:${action}`;
+        if (!edgeSet.has(edgeKey)) {
+          edgeSet.add(edgeKey);
+          edges.push({ source: src, target: sid, action });
+        }
+      }
     }
 
-    if (backTo !== null) {
-      const backIdx = parseInt(backTo, 10) - 1;
+    // Handle back-to-state (lasso)
+    if (raw.backToIndex !== null) {
       let backSid: string | null = null;
-      if (backIdx >= 0 && backIdx < traceEntries.length) {
-        backSid = traceEntries[backIdx].stateId;
+      if (raw.backToIndex >= 0 && raw.backToIndex < traceIds.length) {
+        backSid = traceIds[raw.backToIndex];
+        // Add loop edge
+        const lastId = traceIds[traceIds.length - 1];
+        const edgeKey = `${lastId}->${backSid}:Back`;
+        if (!edgeSet.has(edgeKey)) {
+          edgeSet.add(edgeKey);
+          edges.push({ source: lastId, target: backSid, action: "Back" });
+        }
       }
       traceEntries.push({ stateId: backSid, action: "Back to state" });
     }
 
-    // Generate summary
-    const summary = violationSummary(vtype, vname, traceStates);
+    const summary = violationSummary(raw.type, raw.name, raw.traceStates);
 
     vid++;
     const violation: ViolationTrace = {
       id: `v${vid}`,
-      type: vtype,
+      type: raw.type,
       summary,
       trace: traceEntries,
     };
-    if (vtype === "invariant" && vname) {
-      violation.invariant = vname;
+    if (raw.type === "invariant" && raw.name) {
+      violation.invariant = raw.name;
     }
-    if (vtype === "temporal" && vname) {
-      violation.property = vname;
+    if (raw.type === "temporal" && raw.name) {
+      violation.property = raw.name;
     }
-
     violations.push(violation);
   }
 
-  return violations;
+  return { states, edges, initialStateId: initialStateId || "t1", violations };
 }

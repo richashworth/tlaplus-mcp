@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseTlcOutput, parseTlcViolationTraces, parseTlcMessages, extractMessageBody } from "./tlc-output.js";
+import { parseTlcOutput, parseTlcViolationTraces, parseTlcMessages, extractMessageBody, buildGraphFromTraces } from "./tlc-output.js";
 
 describe("parseTlcOutput", () => {
   it("parses successful run with state counts", () => {
@@ -410,5 +410,138 @@ describe("extractMessageBody", () => {
 
   it("returns null for non-tool-mode output", () => {
     expect(extractMessageBody("plain text output", 2186)).toBeNull();
+  });
+});
+
+describe("buildGraphFromTraces", () => {
+  it("builds graph from single invariant violation trace (legacy)", () => {
+    const output = `Error: Invariant TypeOK is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+/\\ y = 2
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 3
+/\\ y = 4
+`;
+
+    const graph = buildGraphFromTraces(output);
+    expect(Object.keys(graph.states)).toHaveLength(2);
+    expect(graph.states["t1"].vars).toEqual({ x: 1, y: 2 });
+    expect(graph.states["t2"].vars).toEqual({ x: 3, y: 4 });
+    expect(graph.initialStateId).toBe("t1");
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges[0]).toEqual({ source: "t1", target: "t2", action: "Next" });
+    expect(graph.violations).toHaveLength(1);
+    expect(graph.violations[0].type).toBe("invariant");
+    expect(graph.violations[0].invariant).toBe("TypeOK");
+    expect(graph.violations[0].trace[0].stateId).toBe("t1");
+    expect(graph.violations[0].trace[1].stateId).toBe("t2");
+  });
+
+  it("builds graph from temporal violation with lasso (legacy)", () => {
+    const output = `Error: Temporal properties were violated.
+Error: Liveness is violated
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+
+Back to state 1
+`;
+
+    const graph = buildGraphFromTraces(output);
+    expect(Object.keys(graph.states)).toHaveLength(2);
+    expect(graph.edges).toHaveLength(2); // t1->t2 and t2->t1 (loop)
+    expect(graph.edges).toContainEqual({ source: "t1", target: "t2", action: "Next" });
+    expect(graph.edges).toContainEqual({ source: "t2", target: "t1", action: "Back" });
+    expect(graph.violations[0].type).toBe("temporal");
+    expect(graph.violations[0].property).toBe("Liveness");
+    expect(graph.violations[0].trace).toHaveLength(3); // 2 states + back-to
+    expect(graph.violations[0].trace[2].action).toBe("Back to state");
+  });
+
+  it("deduplicates states across multiple traces", () => {
+    const output = `Error: Invariant InvA is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <StepA line 10, col 1 of module Spec>
+/\\ x = 2
+
+Error: Invariant InvB is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <StepB line 15, col 1 of module Spec>
+/\\ x = 3
+`;
+
+    const graph = buildGraphFromTraces(output);
+    // State x=1 is shared, so 3 unique states total
+    expect(Object.keys(graph.states)).toHaveLength(3);
+    expect(graph.initialStateId).toBe("t1");
+    expect(graph.edges).toHaveLength(2);
+    expect(graph.violations).toHaveLength(2);
+    // Both traces reference the same initial state
+    expect(graph.violations[0].trace[0].stateId).toBe("t1");
+    expect(graph.violations[1].trace[0].stateId).toBe("t1");
+  });
+
+  it("deduplicates edges across traces", () => {
+    const output = `Error: Invariant InvA is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+
+Error: Invariant InvB is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+`;
+
+    const graph = buildGraphFromTraces(output);
+    expect(Object.keys(graph.states)).toHaveLength(2);
+    expect(graph.edges).toHaveLength(1); // same edge only once
+  });
+
+  it("builds graph from tool-mode output", () => {
+    const output = [
+      "@!@!@STARTMSG 2110:1 @!@!@",
+      "Invariant TypeOK is violated.",
+      "@!@!@ENDMSG 2110 @!@!@",
+      "@!@!@STARTMSG 2121:1 @!@!@",
+      "The behavior up to this point is:",
+      "@!@!@ENDMSG 2121 @!@!@",
+      "@!@!@STARTMSG 2216:4 @!@!@",
+      "/\\ x = 1",
+      "@!@!@ENDMSG 2216 @!@!@",
+      "@!@!@STARTMSG 2217:4 @!@!@",
+      "2: <Next line 10, col 1 of module Spec>",
+      "/\\ x = 2",
+      "@!@!@ENDMSG 2217 @!@!@",
+    ].join("\n");
+
+    const graph = buildGraphFromTraces(output);
+    expect(Object.keys(graph.states)).toHaveLength(2);
+    expect(graph.states["t1"].vars).toEqual({ x: 1 });
+    expect(graph.states["t2"].vars).toEqual({ x: 2 });
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.violations).toHaveLength(1);
+    expect(graph.violations[0].trace[0].stateId).toBe("t1");
+    expect(graph.violations[0].trace[1].stateId).toBe("t2");
+  });
+
+  it("returns empty graph for output with no violations", () => {
+    const output = "Model checking completed. No error has been found.";
+    const graph = buildGraphFromTraces(output);
+    expect(Object.keys(graph.states)).toHaveLength(0);
+    expect(graph.edges).toHaveLength(0);
+    expect(graph.violations).toHaveLength(0);
   });
 });
