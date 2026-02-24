@@ -23,6 +23,32 @@ export interface RunJavaResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+  timedOut: boolean;
+}
+
+/**
+ * TLC flags that are already managed by explicit tool parameters.
+ * Allowing these via extra_args would bypass validation or cause conflicts.
+ */
+const BLOCKED_EXTRA_ARGS = new Set([
+  "-dump",         // managed via generate_states/dump_path
+  "-metadir",      // could redirect metadata to arbitrary paths
+  "-userFile",     // could write to arbitrary paths
+  "-tlafile",      // could overwrite arbitrary files
+]);
+
+/**
+ * Validate extra_args against blocked flags.
+ * Throws if any blocked flag is found.
+ */
+export function sanitizeExtraArgs(args: string[]): string[] {
+  for (const arg of args) {
+    const normalized = arg.toLowerCase();
+    if (BLOCKED_EXTRA_ARGS.has(normalized)) {
+      throw new Error(`Flag "${arg}" is not allowed in extra_args (use the dedicated tool parameter instead)`);
+    }
+  }
+  return args;
 }
 
 /**
@@ -49,12 +75,14 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
 
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
+    let didTimeout = false;
 
     child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
     // Timeout handling
     const timer = setTimeout(() => {
+      didTimeout = true;
       child.kill("SIGKILL");
     }, timeoutSec * 1000);
 
@@ -75,66 +103,7 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
         exitCode: code ?? 1,
         stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
         stderr: Buffer.concat(stderrChunks).toString("utf-8"),
-      });
-    });
-
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      if (opts.signal) {
-        opts.signal.removeEventListener("abort", onAbort);
-      }
-      reject(err);
-    });
-  });
-}
-
-/**
- * Run a Java class using -jar mode (for tools like pcal.trans that need it).
- */
-export async function runJavaJar(opts: Omit<RunJavaOptions, "className"> & { args: string[] }): Promise<RunJavaResult> {
-  const config = loadConfig();
-  const jarPath = await getJarPath();
-  const timeoutSec = opts.timeout ?? config.timeout;
-
-  const javaArgs = [
-    ...config.javaOpts,
-    "-cp",
-    jarPath,
-    ...opts.args,
-  ];
-
-  return new Promise<RunJavaResult>((resolve, reject) => {
-    const child = spawn("java", javaArgs, {
-      cwd: opts.cwd ?? config.workspace,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-
-    child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-    }, timeoutSec * 1000);
-
-    const onAbort = () => {
-      child.kill("SIGKILL");
-    };
-    if (opts.signal) {
-      opts.signal.addEventListener("abort", onAbort, { once: true });
-    }
-
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (opts.signal) {
-        opts.signal.removeEventListener("abort", onAbort);
-      }
-      resolve({
-        exitCode: code ?? 1,
-        stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
-        stderr: Buffer.concat(stderrChunks).toString("utf-8"),
+        timedOut: didTimeout,
       });
     });
 

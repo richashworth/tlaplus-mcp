@@ -5,15 +5,17 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename, join } from "node:path";
-import { runJava } from "../lib/process.js";
+import { mkdirSync } from "node:fs";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
     "tlc_check",
     "Run TLC model checker in exhaustive breadth-first mode to verify a TLA+ specification. Checks all reachable states against invariants, properties, and (optionally) deadlock freedom.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla specification file"),
+      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
       cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
       workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
       deadlock: z.boolean().default(true).describe("Check for deadlock (default true). Set false to disable deadlock checking."),
@@ -22,6 +24,7 @@ export function registerTlcCheck(server: McpServer): void {
       diff_trace: z.boolean().optional().describe("Show only changed variables between trace states"),
       max_set_size: z.number().int().positive().optional().describe("Override TLC's max set size (default 1000000)"),
       generate_states: z.boolean().optional().describe("Dump state graph in DOT format"),
+      dump_path: z.string().optional().describe("Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed."),
       extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
     },
     async (params) => {
@@ -66,14 +69,19 @@ export function registerTlcCheck(server: McpServer): void {
         }
 
         // Generate state graph
+        let dumpFile: string | undefined;
         if (params.generate_states) {
-          const dumpPath = join(cwd, "states");
+          const dumpPath = params.dump_path ?? join(cwd, "states");
+          if (params.dump_path) {
+            mkdirSync(dirname(dumpPath), { recursive: true });
+          }
           args.push("-dump", "dot,actionlabels,colorize", dumpPath);
+          dumpFile = dumpPath + ".dot";
         }
 
         // Extra args
         if (params.extra_args) {
-          args.push(...params.extra_args);
+          args.push(...sanitizeExtraArgs(params.extra_args));
         }
 
         // Spec file goes last
@@ -88,11 +96,13 @@ export function registerTlcCheck(server: McpServer): void {
         const output = result.stdout + "\n" + result.stderr;
         const parsed = parseTlcOutput(output);
 
-        const status = parsed.violations.length > 0
-          ? "violation"
-          : parsed.errors.length > 0
-            ? "error"
-            : "success";
+        const status = result.timedOut
+          ? "timeout"
+          : parsed.violations.length > 0
+            ? "violation"
+            : parsed.errors.length > 0
+              ? "error"
+              : "success";
 
         return {
           content: [
@@ -107,6 +117,7 @@ export function registerTlcCheck(server: McpServer): void {
                   violations: parsed.violations,
                   errors: parsed.errors,
                   coverage: parsed.coverage,
+                  ...(dumpFile ? { dump_file: dumpFile } : {}),
                   raw_output: output.trim(),
                 },
                 null,

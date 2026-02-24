@@ -46,43 +46,73 @@ export function registerTlaEvaluate(server: McpServer): void {
 
         const result = await runJava({
           className: "tlc2.TLC",
-          args: ["-config", cfgPath, tlaPath],
+          args: ["-tool", "-config", cfgPath, tlaPath],
           cwd: dir,
           timeout: 30,
         });
 
         const output = result.stdout + "\n" + result.stderr;
 
-        // TLC PrintT outputs the value on its own line to stdout.
-        // Look for the printed value — it appears before the "Finished" or after the
-        // "Starting..." line. We look for lines that are not TLC banners.
+        // Try structured tool-mode parsing first: look for @!@!@STARTMSG/@!@!@ENDMSG markers
+        // and extract the body of message code 2186 (PrintT output).
         let evaluated: string | null = null;
 
-        // PrintT output appears in stdout, typically as a line by itself
-        const lines = result.stdout.split("\n");
-        for (const line of lines) {
-          const trimmed = line.trim();
-          // Skip TLC banner/status lines
-          if (
-            !trimmed ||
-            trimmed.startsWith("TLC2") ||
-            trimmed.startsWith("Starting") ||
-            trimmed.startsWith("Finished") ||
-            trimmed.startsWith("@!@!@") ||
-            trimmed.startsWith("\\*") ||
-            trimmed.startsWith("Warning:") ||
-            trimmed.startsWith("Model-checking") ||
-            trimmed.startsWith("Running") ||
-            trimmed.startsWith("Implied-temporal") ||
-            trimmed.startsWith("The") ||
-            trimmed.startsWith("Checking") ||
-            trimmed.startsWith("Progress") ||
-            trimmed.startsWith("Semantic processing")
-          ) {
+        const MSG_START = /^@!@!@STARTMSG (\d+):(\d+) @!@!@$/;
+        const MSG_END = /^@!@!@ENDMSG (\d+) @!@!@$/;
+        const allLines = result.stdout.split("\n");
+        let currentCode: number | null = null;
+        const bodyLines: string[] = [];
+
+        for (const line of allLines) {
+          const startMatch = MSG_START.exec(line);
+          if (startMatch) {
+            currentCode = parseInt(startMatch[1], 10);
+            bodyLines.length = 0;
             continue;
           }
-          evaluated = trimmed;
-          break;
+
+          const endMatch = MSG_END.exec(line);
+          if (endMatch && currentCode !== null) {
+            if (currentCode === 2186) {
+              evaluated = bodyLines.join("\n").trim();
+            }
+            currentCode = null;
+            bodyLines.length = 0;
+            continue;
+          }
+
+          if (currentCode !== null) {
+            bodyLines.push(line);
+          }
+        }
+
+        // Fallback: prefix-blocklist parsing for non-tool-mode output
+        if (evaluated === null) {
+          const lines = result.stdout.split("\n");
+          for (const line of lines) {
+            const trimmed = line.trim();
+            // Skip TLC banner/status lines
+            if (
+              !trimmed ||
+              trimmed.startsWith("TLC2") ||
+              trimmed.startsWith("Starting") ||
+              trimmed.startsWith("Finished") ||
+              trimmed.startsWith("@!@!@") ||
+              trimmed.startsWith("\\*") ||
+              trimmed.startsWith("Warning:") ||
+              trimmed.startsWith("Model-checking") ||
+              trimmed.startsWith("Running") ||
+              trimmed.startsWith("Implied-temporal") ||
+              trimmed.startsWith("The") ||
+              trimmed.startsWith("Checking") ||
+              trimmed.startsWith("Progress") ||
+              trimmed.startsWith("Semantic processing")
+            ) {
+              continue;
+            }
+            evaluated = trimmed;
+            break;
+          }
         }
 
         // Check for errors

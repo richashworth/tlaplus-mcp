@@ -4,15 +4,16 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJava } from "../lib/process.js";
-import { dirname, basename } from "node:path";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
+import { dirname, basename, join } from "node:path";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
   server.tool(
     "tlc_generate_trace_spec",
     "Run TLC model-checking on a TLA+ spec with -generateSpecTE to produce a Trace Explorer spec (SpecTE.tla / SpecTE.cfg). This is useful for debugging counter-examples: it generates a standalone spec that replays the error trace.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla file"),
+      tla_file: absolutePath.describe("Absolute path to the .tla file"),
       cfg_file: z
         .string()
         .optional()
@@ -44,7 +45,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         }
 
         if (extra_args) {
-          args.push(...extra_args);
+          args.push(...sanitizeExtraArgs(extra_args));
         }
 
         args.push(tla_file);
@@ -59,8 +60,8 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
 
         // Look for generated SpecTE files
         const baseName = basename(tla_file, ".tla");
-        const specTeTla = `${dir}/${baseName}_SpecTE.tla`;
-        const specTeCfg = `${dir}/${baseName}_SpecTE.cfg`;
+        const specTeTla = join(dir, `${baseName}_SpecTE.tla`);
+        const specTeCfg = join(dir, `${baseName}_SpecTE.cfg`);
 
         // Also check for the standard "SpecTE" naming
         let tlaFile: string | null = null;
@@ -75,8 +76,8 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         // Check common output patterns for the generated files
         if (!tlaFile) {
           if (output.includes("SpecTE.tla") || output.includes("_SpecTE.tla")) {
-            tlaFile = output.includes("_SpecTE.tla") ? specTeTla : `${dir}/SpecTE.tla`;
-            cfgFile = output.includes("_SpecTE.cfg") ? specTeCfg : `${dir}/SpecTE.cfg`;
+            tlaFile = output.includes("_SpecTE.tla") ? specTeTla : join(dir, "SpecTE.tla");
+            cfgFile = output.includes("_SpecTE.cfg") ? specTeCfg : join(dir, "SpecTE.cfg");
           }
         }
 

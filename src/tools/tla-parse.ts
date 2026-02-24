@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
+import { absolutePath } from "../lib/schemas.js";
 
 interface ParseError {
   message: string;
@@ -16,7 +17,7 @@ export function registerTlaParse(server: McpServer): void {
     "tla_parse",
     "Parse and syntax-check a TLA+ module using SANY (Syntactic Analyzer). Returns parse errors and the list of modules parsed.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla file to parse"),
+      tla_file: absolutePath.describe("Absolute path to the .tla file to parse"),
     },
     async ({ tla_file }) => {
       try {

@@ -77,7 +77,13 @@ async function downloadJar(): Promise<string> {
 /** Get the jar path, throwing a user-friendly error if unavailable. */
 let cachedJarPath: string | undefined;
 export async function getJarPath(): Promise<string> {
-  if (cachedJarPath) return cachedJarPath;
+  if (cachedJarPath) {
+    if (!existsSync(cachedJarPath)) {
+      cachedJarPath = undefined;
+    } else {
+      return cachedJarPath;
+    }
+  }
   checkJava();
   cachedJarPath = await resolveJar();
   return cachedJarPath;

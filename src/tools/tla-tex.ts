@@ -6,13 +6,14 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { execFileSync } from "node:child_process";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlaTex(server: McpServer): void {
   server.tool(
     "tla_tex",
     "Typeset a TLA+ specification into a PDF or DVI file using TLATeX. Requires a LaTeX installation (pdflatex or latex) to be available.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla file to typeset"),
+      tla_file: absolutePath.describe("Absolute path to the .tla file to typeset"),
       shade: z
         .boolean()
         .default(false)
@@ -39,7 +40,7 @@ export function registerTlaTex(server: McpServer): void {
         // Check for LaTeX availability
         const latexCmd = output_format === "pdf" ? "pdflatex" : "latex";
         try {
-          execFileSync("which", [latexCmd], { stdio: "pipe" });
+          execFileSync(latexCmd, ["--version"], { stdio: "pipe" });
         } catch {
           return {
             content: [

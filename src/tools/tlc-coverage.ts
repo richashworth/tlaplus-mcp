@@ -5,15 +5,16 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename } from "node:path";
-import { runJava } from "../lib/process.js";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlcCoverage(server: McpServer): void {
   server.tool(
     "tlc_coverage",
     "Run TLC model checker with action coverage reporting. Shows how many times each action was taken and how many distinct states it produced, helping identify under-explored parts of the spec.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla specification file"),
+      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
       cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
       interval_minutes: z.number().positive().default(1).describe("Coverage reporting interval in minutes (default 1)"),
       workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
@@ -40,7 +41,7 @@ export function registerTlcCoverage(server: McpServer): void {
 
         // Extra args
         if (params.extra_args) {
-          args.push(...params.extra_args);
+          args.push(...sanitizeExtraArgs(params.extra_args));
         }
 
         // Spec file goes last
@@ -55,11 +56,13 @@ export function registerTlcCoverage(server: McpServer): void {
         const output = result.stdout + "\n" + result.stderr;
         const parsed = parseTlcOutput(output);
 
-        const status = parsed.violations.length > 0
-          ? "violation"
-          : parsed.errors.length > 0
-            ? "error"
-            : "success";
+        const status = result.timedOut
+          ? "timeout"
+          : parsed.violations.length > 0
+            ? "violation"
+            : parsed.errors.length > 0
+              ? "error"
+              : "success";
 
         return {
           content: [

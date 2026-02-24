@@ -5,15 +5,16 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename } from "node:path";
-import { runJava } from "../lib/process.js";
+import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
+import { absolutePath } from "../lib/schemas.js";
 
 export function registerTlcSimulate(server: McpServer): void {
   server.tool(
     "tlc_simulate",
     "Run TLC in simulation mode to randomly explore execution traces. Faster than exhaustive checking but not complete — useful for large state spaces or quick smoke tests.",
     {
-      tla_file: z.string().describe("Absolute path to the .tla specification file"),
+      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
       cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
       depth: z.number().int().positive().default(100).describe("Maximum depth of each simulation trace (default 100)"),
       num_traces: z.number().int().positive().optional().describe("Number of traces to generate"),
@@ -71,7 +72,7 @@ export function registerTlcSimulate(server: McpServer): void {
 
         // Extra args
         if (params.extra_args) {
-          args.push(...params.extra_args);
+          args.push(...sanitizeExtraArgs(params.extra_args));
         }
 
         // Spec file goes last
@@ -86,11 +87,13 @@ export function registerTlcSimulate(server: McpServer): void {
         const output = result.stdout + "\n" + result.stderr;
         const parsed = parseTlcOutput(output);
 
-        const status = parsed.violations.length > 0
-          ? "violation"
-          : parsed.errors.length > 0
-            ? "error"
-            : "success";
+        const status = result.timedOut
+          ? "timeout"
+          : parsed.violations.length > 0
+            ? "violation"
+            : parsed.errors.length > 0
+              ? "error"
+              : "success";
 
         return {
           content: [
