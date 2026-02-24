@@ -93,15 +93,32 @@ All tools return structured JSON with a `raw_output` field for fallback. Errors 
 
 ```bash
 npm run dev       # Watch mode (recompile on change)
-npm test          # Run unit tests
+npm test          # Run all tests (unit + integration)
 npm run build     # Production build
+```
+
+### Testing
+
+The project has two layers of tests:
+
+**Unit tests** (`src/**/*.test.ts` alongside source files) — test individual parsers and tool handlers in isolation with mocked Java/filesystem calls.
+
+**Integration tests** (`src/integration.test.ts`) — use the MCP SDK's `Client` + `InMemoryTransport` to exercise the full protocol round-trip (client → transport → server → tool handler → response) without needing Java installed. These verify tool registration, schema validation, and response shapes.
+
+```bash
+npm test                                    # Run everything
+npx vitest run src/integration.test.ts      # Integration tests only
+npx vitest run src/parsers/                 # Parser unit tests only
+npx vitest run src/tools/                   # Tool handler unit tests only
 ```
 
 ## Project structure
 
 ```
 src/
-  index.ts                    # Entry point — registers tools, resources, starts stdio
+  index.ts                    # Entry point — starts stdio transport
+  server.ts                   # Server factory — registers tools + resources
+  integration.test.ts         # MCP protocol integration tests
   lib/
     config.ts                 # Environment variable config
     java.ts                   # Java detection, jar resolution, auto-download
@@ -110,8 +127,9 @@ src/
     tla-values.ts             # Recursive-descent parser for TLC-printed TLA+ values
     dot.ts                    # DOT state graph parser
     cfg.ts                    # CFG invariant/property parser
-    tlc-output.ts             # TLC stdout parser (stats, violations, coverage)
+    tlc-output.ts             # TLC stdout parser (stats, violations, coverage, trace graphs)
     action-disambiguator.ts   # Disambiguate duplicate action labels with variable diffs
+    happy-paths.ts            # BFS discovery of successful execution paths
   tools/
     tlc-check.ts              # tlc_check tool
     tlc-simulate.ts           # tlc_simulate tool
