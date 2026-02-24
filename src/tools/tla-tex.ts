@@ -88,6 +88,7 @@ export function registerTlaTex(server: McpServer): void {
         }
 
         return formatToolResponse({
+          status: success ? "success" : "error",
           success,
           output_file: success ? outputFile : null,
           error,

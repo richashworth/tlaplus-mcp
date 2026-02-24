@@ -35,4 +35,15 @@ describe("sanitizeExtraArgs", () => {
   it("includes the flag name in the error message", () => {
     expect(() => sanitizeExtraArgs(["-dump"])).toThrow('"-dump"');
   });
+
+  it("blocks flags using = syntax (e.g. -dump=dot)", () => {
+    expect(() => sanitizeExtraArgs(["-dump=dot"])).toThrow(/not allowed/);
+    expect(() => sanitizeExtraArgs(["-metadir=/tmp/meta"])).toThrow(/not allowed/);
+    expect(() => sanitizeExtraArgs(["-DUMP=dot,colorize,actionlabels"])).toThrow(/not allowed/);
+  });
+
+  it("blocks -dumptrace", () => {
+    expect(() => sanitizeExtraArgs(["-dumptrace"])).toThrow(/not allowed/);
+    expect(() => sanitizeExtraArgs(["-dumptrace=tla"])).toThrow(/not allowed/);
+  });
 });

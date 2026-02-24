@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
@@ -26,6 +27,7 @@ export function registerTlaParse(server: McpServer): void {
         const result = await runJava({
           className: "tla2sany.SANY",
           args: [tla_file],
+          cwd: dirname(tla_file),
         });
 
         const output = combineOutput(result);
@@ -102,6 +104,7 @@ export function registerTlaParse(server: McpServer): void {
         const valid = result.exitCode === 0 && errors.length === 0;
 
         return formatToolResponse({
+          status: valid ? "success" : "error",
           valid, errors, modules_parsed: modulesParsed, raw_output: truncateOutput(output),
         });
       } catch (err: unknown) {

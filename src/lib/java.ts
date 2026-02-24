@@ -2,7 +2,7 @@
  * Java detection, tla2tools.jar resolution and auto-download.
  */
 
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -12,13 +12,49 @@ const JAR_URL = "https://nightly.tlapl.us/dist/tla2tools.jar";
 const DEFAULT_JAR_DIR = join(homedir(), ".tlaplus-mcp", "lib");
 const DEFAULT_JAR_PATH = join(DEFAULT_JAR_DIR, "tla2tools.jar");
 
-/** Check that java is on PATH. Throws a descriptive error if not. */
+/**
+ * Parse the major Java version from `java -version` stderr output.
+ *
+ * Handles vendor formats:
+ * - OpenJDK: `openjdk version "17.0.1"`
+ * - Oracle old: `java version "1.8.0_311"` (1.x means major version x)
+ * - GraalVM/modern: `openjdk version "21"`
+ */
+export function parseJavaVersion(versionOutput: string): number {
+  const match = versionOutput.match(/version "(\d+)(?:\.(\d+))?/);
+  if (!match) {
+    throw new Error(
+      `Could not parse Java version from output:\n${versionOutput}`
+    );
+  }
+
+  const major = parseInt(match[1], 10);
+  // "1.x.y" format: the real major version is x (e.g. 1.8 = Java 8)
+  if (major === 1 && match[2] !== undefined) {
+    return parseInt(match[2], 10);
+  }
+  return major;
+}
+
+const MIN_JAVA_VERSION = 11;
+
+/** Check that java is on PATH and is JDK 11+. Throws a descriptive error if not. */
 export function checkJava(): void {
-  try {
-    execFileSync("java", ["-version"], { stdio: "pipe" });
-  } catch {
+  // java -version writes to stderr, so use spawnSync for direct stderr access
+  const result = spawnSync("java", ["-version"], { encoding: "utf-8" });
+
+  if (result.error) {
     throw new Error(
       "Java is required but not found on PATH (JDK 11+).\n" +
+        "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)"
+    );
+  }
+
+  const output = result.stderr || result.stdout;
+  const version = parseJavaVersion(output);
+  if (version < MIN_JAVA_VERSION) {
+    throw new Error(
+      `Java ${MIN_JAVA_VERSION}+ is required but found Java ${version}.\n` +
         "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)"
     );
   }

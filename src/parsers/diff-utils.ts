@@ -6,7 +6,9 @@ import type { VarMap } from "./types.js";
 
 /** Stringify a value for human-readable display. */
 export function short(v: unknown): string {
-  return typeof v === "string" ? v : String(v);
+  if (typeof v === "string") return v;
+  const s = JSON.stringify(v);
+  return s.length > 50 ? s.slice(0, 47) + "..." : s;
 }
 
 /**

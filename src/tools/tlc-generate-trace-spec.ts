@@ -93,6 +93,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         }
 
         return formatToolResponse({
+          status: success ? "success" : "error",
           success,
           spec_te_tla: tlaFile,
           spec_te_cfg: cfgFile,

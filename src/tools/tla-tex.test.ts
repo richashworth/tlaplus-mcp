@@ -41,12 +41,13 @@ describe("tla_tex", () => {
     expect(mockExecFileSync).toHaveBeenCalledWith("latex", ["--version"], { stdio: "pipe" });
   });
 
-  it("returns error when latex not found", async () => {
+  it("returns error with status=error when latex not found", async () => {
     mockExecFileSync.mockImplementation(() => { throw new Error("not found"); });
     const result = await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("pdflatex not found");
+    expect(parsed.status).toBe("error");
   });
 
   it("adds -shade flag", async () => {
@@ -87,10 +88,11 @@ describe("tla_tex", () => {
     expect(args).toContain("pdflatex");
   });
 
-  it("returns output_file with .pdf extension", async () => {
+  it("returns output_file with .pdf extension and status=success", async () => {
     const result = await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.output_file).toBe("/specs/Spec.pdf");
+    expect(parsed.status).toBe("success");
   });
 
   it("returns output_file with .dvi extension", async () => {

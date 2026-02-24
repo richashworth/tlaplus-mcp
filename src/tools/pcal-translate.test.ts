@@ -32,6 +32,7 @@ describe("pcal_translate", () => {
     const call = mockRunJava.mock.calls[0][0];
     expect(call.className).toBe("pcal.trans");
     expect(call.args).toContain("/specs/Algo.tla");
+    expect(call.cwd).toBe("/specs");
   });
 
   it("adds -fairness flag when not nof", async () => {
@@ -78,16 +79,17 @@ describe("pcal_translate", () => {
     expect(args).not.toContain("-lineWidth");
   });
 
-  it("extracts labels added from output", async () => {
+  it("extracts labels added from output with status=success", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       stdout: "-- added label Lbl_1\n-- added label Lbl_2\n",
     }));
     const result = await handler({ tla_file: "/specs/Algo.tla", fairness: "nof", termination: false, no_cfg: false, label: true, line_width: 78 });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.labels_added).toEqual(["Lbl_1", "Lbl_2"]);
+    expect(parsed.status).toBe("success");
   });
 
-  it("returns success=false on errors", async () => {
+  it("returns success=false and status=error on errors", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       exitCode: 1,
       stdout: "Unrecoverable error: missing algorithm\n",
@@ -95,6 +97,7 @@ describe("pcal_translate", () => {
     const result = await handler({ tla_file: "/specs/Algo.tla", fairness: "nof", termination: false, no_cfg: false, label: true, line_width: 78 });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.success).toBe(false);
+    expect(parsed.status).toBe("error");
     expect(parsed.errors.length).toBeGreaterThan(0);
   });
 });

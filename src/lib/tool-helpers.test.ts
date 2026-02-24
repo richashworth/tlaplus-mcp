@@ -80,17 +80,19 @@ describe("formatToolResponse", () => {
 });
 
 describe("formatToolError", () => {
-  it("extracts message from Error instances", () => {
+  it("extracts message from Error instances with status=error", () => {
     const result = formatToolError(new Error("boom"));
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("boom");
+    expect(parsed.status).toBe("error");
   });
 
-  it("converts non-Error values to string", () => {
+  it("converts non-Error values to string with status=error", () => {
     const result = formatToolError("string error");
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("string error");
+    expect(parsed.status).toBe("error");
   });
 
   it("converts number to string", () => {
@@ -117,6 +119,24 @@ describe("truncateOutput", () => {
     const input = "abcdefghij";
     expect(truncateOutput(input, 5)).toContain("[truncated]");
     expect(truncateOutput(input, 20)).toBe("abcdefghij");
+  });
+
+  it("does not produce U+FFFD when truncating multi-byte UTF-8", () => {
+    // Each emoji is 4 bytes in UTF-8; cutting at 5 bytes splits the second emoji
+    const input = "\u{1F600}\u{1F601}\u{1F602}"; // 3 emoji, 12 bytes
+    const result = truncateOutput(input, 5);
+    expect(result).not.toContain("\uFFFD");
+    expect(result).toContain("[truncated]");
+    // Should retain only the first complete emoji
+    expect(result.startsWith("\u{1F600}")).toBe(true);
+  });
+
+  it("handles 3-byte UTF-8 chars split mid-codepoint", () => {
+    // CJK character U+4E16 is 3 bytes; cutting at 4 bytes splits the second char
+    const input = "\u4E16\u754C\u4F60\u597D"; // 4 CJK chars, 12 bytes
+    const result = truncateOutput(input, 4);
+    expect(result).not.toContain("\uFFFD");
+    expect(result).toContain("[truncated]");
   });
 });
 

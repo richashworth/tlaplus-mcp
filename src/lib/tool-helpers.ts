@@ -37,7 +37,11 @@ export function deriveStatus(
 export function truncateOutput(output: string, maxBytes: number = 102400): string {
   const trimmed = output.trim();
   if (Buffer.byteLength(trimmed, "utf-8") <= maxBytes) return trimmed;
-  const truncated = Buffer.from(trimmed).subarray(0, maxBytes).toString("utf-8");
+  let truncated = Buffer.from(trimmed).subarray(0, maxBytes).toString("utf-8");
+  // Buffer.subarray can split a multi-byte codepoint, producing U+FFFD at the end
+  if (truncated.endsWith("\uFFFD")) {
+    truncated = truncated.slice(0, -1);
+  }
   return truncated + "\n[truncated]";
 }
 
@@ -59,7 +63,7 @@ export function formatToolResponse(data: object) {
 export function formatToolError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
   return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
+    content: [{ type: "text" as const, text: JSON.stringify({ status: "error", error: msg }) }],
     isError: true as const,
   };
 }

@@ -1,10 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { captureToolHandler } from "../test-utils.js";
 import fs from "node:fs";
+import { existsSync } from "node:fs";
 
 vi.mock("../lib/schemas.js", () => ({
-  absolutePath: { describe: () => ({ _def: {} }) } as any,
+  absolutePath: { describe: () => ({ _def: {} }), optional: () => ({ describe: () => ({ _def: {} }) }) } as any,
 }));
+
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  const mockExistsSync = vi.fn(() => true);
+  const mockReadFileSync = vi.fn();
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      existsSync: mockExistsSync,
+      readFileSync: mockReadFileSync,
+    },
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
+  };
+});
 
 import { registerTlaStateGraph } from "./tla-state-graph.js";
 
@@ -19,22 +36,23 @@ describe("tla_state_graph", () => {
   let handler: (params: any) => Promise<any>;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     handler = captureToolHandler(registerTlaStateGraph);
   });
 
   it("returns raw DOT content for dot format", async () => {
-    vi.spyOn(fs, "readFileSync").mockReturnValue(TLC_DOT);
+    vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
     const result = await handler({ dot_file: "/specs/states.dot", format: "dot" });
     expect(result.content[0].text).toBe(TLC_DOT);
   });
 
-  it("returns structured format with nodes and edges", async () => {
-    vi.spyOn(fs, "readFileSync").mockReturnValue(TLC_DOT);
+  it("returns structured format with nodes, edges, and status=success", async () => {
+    vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
     const result = await handler({ dot_file: "/specs/states.dot", format: "structured" });
     const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("success");
     expect(parsed.node_count).toBe(2);
     expect(parsed.edge_count).toBe(1);
     expect(parsed.nodes).toHaveLength(2);
@@ -42,11 +60,12 @@ describe("tla_state_graph", () => {
     expect(parsed.edges[0].action).toBe("Next");
   });
 
-  it("returns playground format with transitions", async () => {
-    vi.spyOn(fs, "readFileSync").mockReturnValue(TLC_DOT);
+  it("returns playground format with transitions and status=success", async () => {
+    vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
     const result = await handler({ dot_file: "/specs/states.dot", format: "playground" });
     const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("success");
     expect(parsed).toHaveProperty("states");
     expect(parsed).toHaveProperty("transitions");
     expect(parsed).toHaveProperty("invariants");
@@ -55,32 +74,59 @@ describe("tla_state_graph", () => {
     expect(parsed.violations).toEqual([]);
   });
 
-  it("enforces MAX_NODES limit", async () => {
+  it("returns structured too_large response when exceeding MAX_NODES", async () => {
     // Build a DOT with >50000 TLC-format nodes
     const lines = ["digraph StateGraph {"];
     for (let i = 0; i < 50_001; i++) {
       lines.push(`${i} [label="/\\\\ x = ${i}"]`);
     }
     lines.push("}");
-    vi.spyOn(fs, "readFileSync").mockReturnValue(lines.join("\n"));
+    vi.mocked(fs.readFileSync).mockReturnValue(lines.join("\n"));
 
     const result = await handler({ dot_file: "/specs/states.dot", format: "structured" });
-    expect(result.isError).toBe(true);
+    expect(result.isError).toBeUndefined();
     const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.error).toContain("too large");
+    expect(parsed.status).toBe("too_large");
+    expect(parsed.too_large).toBe(true);
+    expect(parsed.node_count).toBe(50_001);
+    expect(parsed.max_nodes).toBe(50_000);
   });
 
-  it("handles file read errors", async () => {
-    vi.spyOn(fs, "readFileSync").mockImplementation(() => {
-      throw new Error("ENOENT");
-    });
+  it("validates dot_file exists", async () => {
+    vi.mocked(existsSync).mockReturnValue(false);
 
     const result = await handler({ dot_file: "/missing/states.dot", format: "dot" });
     expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("DOT file not found");
+  });
+
+  it("validates cfg_file exists when provided", async () => {
+    vi.mocked(existsSync).mockImplementation((p: any) => {
+      if (String(p) === "/specs/missing.cfg") return false;
+      return true;
+    });
+
+    const result = await handler({ dot_file: "/specs/states.dot", cfg_file: "/specs/missing.cfg", format: "playground" });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("CFG file not found");
+  });
+
+  it("validates tlc_output_file exists when provided", async () => {
+    vi.mocked(existsSync).mockImplementation((p: any) => {
+      if (String(p) === "/specs/missing.out") return false;
+      return true;
+    });
+
+    const result = await handler({ dot_file: "/specs/states.dot", tlc_output_file: "/specs/missing.out", format: "playground" });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("TLC output file not found");
   });
 
   it("parses cfg_file for invariants in playground format", async () => {
-    vi.spyOn(fs, "readFileSync")
+    vi.mocked(fs.readFileSync)
       .mockReturnValueOnce(TLC_DOT)
       .mockReturnValueOnce("INVARIANT TypeOK\nPROPERTY Liveness\n");
 

@@ -26,7 +26,7 @@ describe("tla_evaluate", () => {
     expect(call.args).toContain("-tool");
   });
 
-  it("extracts result from structured tool-mode output (code 2186)", async () => {
+  it("extracts result from structured tool-mode output (code 2186) with status=success", async () => {
     const stdout = [
       "@!@!@STARTMSG 2186:0 @!@!@",
       "42",
@@ -38,6 +38,7 @@ describe("tla_evaluate", () => {
     const result = await handler({ expression: "40 + 2" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.result).toBe("42");
+    expect(parsed.status).toBe("success");
   });
 
   it("falls back to prefix-blocklist parsing", async () => {
@@ -73,7 +74,7 @@ describe("tla_evaluate", () => {
     expect(mockRunJava).toHaveBeenCalledOnce();
   });
 
-  it("reports error on non-zero exit with no result", async () => {
+  it("reports error with status=error on non-zero exit with no result", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       exitCode: 1,
       stdout: "",
@@ -83,6 +84,7 @@ describe("tla_evaluate", () => {
     const result = await handler({ expression: "bad expr" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("Unknown operator");
+    expect(parsed.status).toBe("error");
   });
 
   it("does not discard PrintT output starting with 'The' or 'Checking' in fallback mode", async () => {
@@ -119,5 +121,32 @@ describe("tla_evaluate", () => {
 
     const result = await handler({ expression: "1 + 2" });
     expect(result.isError).toBe(true);
+  });
+
+  it("rejects invalid import names with commas (injection attempt)", async () => {
+    const result = await handler({ expression: "1 + 2", imports: ["Integers, Naturals"] });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("Invalid module name");
+    expect(mockRunJava).not.toHaveBeenCalled();
+  });
+
+  it("rejects import names with special characters", async () => {
+    const result = await handler({ expression: "1", imports: ["Foo; DROP TABLE"] });
+    expect(result.isError).toBe(true);
+    expect(mockRunJava).not.toHaveBeenCalled();
+  });
+
+  it("rejects import names starting with a digit", async () => {
+    const result = await handler({ expression: "1", imports: ["123Bad"] });
+    expect(result.isError).toBe(true);
+    expect(mockRunJava).not.toHaveBeenCalled();
+  });
+
+  it("accepts valid import names with underscores", async () => {
+    mockRunJava.mockResolvedValue(mockRunJavaResult({ stdout: "3\n" }));
+
+    await handler({ expression: "1 + 2", imports: ["My_Module", "_Private"] });
+    expect(mockRunJava).toHaveBeenCalledOnce();
   });
 });

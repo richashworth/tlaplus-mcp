@@ -34,6 +34,7 @@ describe("tla_parse", () => {
     const call = mockRunJava.mock.calls[0][0];
     expect(call.className).toBe("tla2sany.SANY");
     expect(call.args).toEqual(["/specs/Spec.tla"]);
+    expect(call.cwd).toBe("/specs");
   });
 
   it("extracts parsed modules from output", async () => {
@@ -46,7 +47,7 @@ describe("tla_parse", () => {
     expect(parsed.modules_parsed).toEqual(["/specs/Spec.tla", "/specs/Other.tla"]);
   });
 
-  it("reports valid=true on clean exit", async () => {
+  it("reports valid=true and status=success on clean exit", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       exitCode: 0,
       stdout: "Parsing file /specs/Spec.tla\n",
@@ -55,10 +56,11 @@ describe("tla_parse", () => {
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.valid).toBe(true);
+    expect(parsed.status).toBe("success");
     expect(parsed.errors).toEqual([]);
   });
 
-  it("extracts semantic errors", async () => {
+  it("extracts semantic errors with status=error", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       exitCode: 1,
       stdout: "line 10, col 5 to line 10, col 20 of module Spec\n",
@@ -67,6 +69,7 @@ describe("tla_parse", () => {
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.valid).toBe(false);
+    expect(parsed.status).toBe("error");
     expect(parsed.errors.length).toBeGreaterThan(0);
     expect(parsed.errors[0].location.line).toBe(10);
   });

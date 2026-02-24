@@ -6,9 +6,7 @@ MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as struc
 
 This server is the tooling backend for [tlaplus-workflow](https://github.com/richardashworth/tlaplus-workflow), a Claude Code plugin that hides TLA+ formal verification behind a conversational interface.
 
-**tlaplus-workflow** provides the agents (specifier, verifier, animator, etc.) and the conversational skill. It currently shells out to bash scripts (`run-tlc.sh`, `check-tla-syntax.sh`) and a Python parser (`dot-to-json.py`) to orchestrate TLC.
-
-**tlaplus-mcp** replaces all of those scripts with a single MCP server. Instead of agents parsing unstructured TLC stdout through bash, they call typed tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
+**tlaplus-workflow** provides the agents (specifier, verifier, animator, etc.) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
 
 ```
 tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
@@ -24,16 +22,6 @@ tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
 │  skill               │           │  tla_tex               │
 └──────────────────────┘           └──────────────────────┘
 ```
-
-Once migrated, the plugin's `scripts/` directory can be removed. The server absorbs:
-
-| Plugin script | Server replacement |
-|---|---|
-| `scripts/resolve-tlc.sh` | `src/lib/java.ts` — jar resolution + auto-download |
-| `scripts/setup-tlc.sh` | `src/lib/java.ts` — downloads to `~/.tlaplus-mcp/lib/` |
-| `scripts/run-tlc.sh` | `tlc_check` / `tlc_simulate` tools |
-| `scripts/check-tla-syntax.sh` | `tla_parse` tool |
-| `scripts/dot-to-json.py` | `tla_state_graph` tool (parsers ported to TypeScript) |
 
 ## Installation
 

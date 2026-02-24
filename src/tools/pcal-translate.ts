@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
@@ -62,6 +63,7 @@ export function registerPcalTranslate(server: McpServer): void {
         const result = await runJava({
           className: "pcal.trans",
           args,
+          cwd: dirname(tla_file),
         });
 
         const output = combineOutput(result);
@@ -87,6 +89,7 @@ export function registerPcalTranslate(server: McpServer): void {
         const outputFile = tla_file;
 
         return formatToolResponse({
+          status: success ? "success" : "error",
           success,
           errors,
           labels_added: labelsAdded,

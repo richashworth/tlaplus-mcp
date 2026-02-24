@@ -25,6 +25,14 @@ export function registerTlaEvaluate(server: McpServer): void {
     },
     async ({ expression, imports }) => {
       const modules = imports ?? ["Integers", "Sequences", "FiniteSets", "TLC"];
+
+      // Validate import names to prevent injection via EXTENDS clause
+      const validModuleName = /^[A-Za-z_][A-Za-z0-9_]*$/;
+      for (const mod of modules) {
+        if (!validModuleName.test(mod)) {
+          return formatToolError(new Error(`Invalid module name: "${mod}". Module names must match [A-Za-z_][A-Za-z0-9_]*.`));
+        }
+      }
       const id = randomUUID().replace(/-/g, "").slice(0, 12);
       const moduleName = `TlaEval_${id}`;
       const dir = tmpdir();
@@ -95,7 +103,7 @@ export function registerTlaEvaluate(server: McpServer): void {
           error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
         }
 
-        return formatToolResponse({ result: evaluated, error, raw_output: truncateOutput(output) });
+        return formatToolResponse({ status: error ? "error" : "success", result: evaluated, error, raw_output: truncateOutput(output) });
       } catch (err: unknown) {
         return formatToolError(err);
       } finally {

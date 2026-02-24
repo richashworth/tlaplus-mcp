@@ -69,6 +69,13 @@ describe("tlc_generate_trace_spec", () => {
     expect(mockRunJava.mock.calls[0][0].cwd).toBe("/specs/sub");
   });
 
+  it("reports status=success on successful generation", async () => {
+    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("success");
+    expect(parsed.success).toBe(true);
+  });
+
   it("reports error on failure with no SpecTE", async () => {
     mockRunJava.mockResolvedValue(mockRunJavaResult({
       exitCode: 1,
@@ -78,6 +85,7 @@ describe("tlc_generate_trace_spec", () => {
     const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.success).toBe(false);
+    expect(parsed.status).toBe("error");
     expect(parsed.error).toBeTruthy();
   });
 
