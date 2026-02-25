@@ -99,6 +99,9 @@ export function registerTlcCheck(server: McpServer): void {
 
         const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
+        if (result.timedOut) {
+          parsed.errors.push({ message: "TLC process killed: timeout exceeded" });
+        }
         const status = deriveStatus(parsed, result.timedOut);
 
         return formatToolResponse({

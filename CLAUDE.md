@@ -22,10 +22,10 @@ npx vitest run src/lib/
 ## Project Structure
 
 - `src/index.ts` — Entry point (stdio transport, graceful shutdown)
-- `src/server.ts` — Server factory, registers all 9 tools + resources
+- `src/server.ts` — Server factory, registers all 10 tools + resources
 - `src/lib/` — Core infra: Java detection, subprocess spawning, config, schemas, shared helpers
 - `src/parsers/` — Output parsers for TLC stdout, TLA+ values, DOT graphs, CFG files
-- `src/tools/` — 9 MCP tool handlers (tlc_check, tlc_simulate, tla_parse, tla_evaluate, pcal_translate, tlc_coverage, tla_state_graph, tlc_generate_trace_spec, tla_tex)
+- `src/tools/` — 10 MCP tool handlers (tlc_check, tlc_simulate, tla_parse, tla_evaluate, pcal_translate, tlc_coverage, tla_state_graph, tlc_generate_trace_spec, tla_tex, playground_init)
 - `src/resources/` — MCP resources (spec listing, file reading, latest output)
 - `src/test-utils.ts` — Shared test utilities (captureToolHandler, mockRunJavaResult)
 

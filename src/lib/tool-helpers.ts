@@ -26,10 +26,9 @@ export function combineOutput(result: RunJavaResult): string {
 export function deriveStatus(
   parsed: TlcResult,
   timedOut: boolean,
-): "timeout" | "violation" | "error" | "success" {
-  if (timedOut) return "timeout";
+): "violation" | "error" | "success" {
   if (parsed.violations.length > 0) return "violation";
-  if (parsed.errors.length > 0) return "error";
+  if (timedOut || parsed.errors.length > 0) return "error";
   return "success";
 }
 

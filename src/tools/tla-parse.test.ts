@@ -111,7 +111,7 @@ describe("tla_parse", () => {
     expect(parsed.errors.length).toBe(1);
     expect(parsed.errors[0].message).toContain("Unknown operator: `Foo'.");
     expect(parsed.errors[0].message).toContain("line 5, col 3 to line 5, col 5 of module Test");
-    expect(parsed.errors[0].location).toEqual({ file: "Test", line: 5, col: 3 });
+    expect(parsed.errors[0].location).toEqual({ file: "/specs/Test.tla", line: 5, col: 3 });
   });
 
   it("catches thrown errors", async () => {

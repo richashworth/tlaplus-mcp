@@ -43,9 +43,13 @@ describe("deriveStatus", () => {
     coverage: [],
   };
 
-  it("returns 'timeout' when timedOut is true (highest priority)", () => {
+  it("returns 'violation' when timedOut is true but violations exist", () => {
     const parsed = { ...baseParsed, violations: [{ type: "invariant" as const, name: "x", trace: [] }] };
-    expect(deriveStatus(parsed, true)).toBe("timeout");
+    expect(deriveStatus(parsed, true)).toBe("violation");
+  });
+
+  it("returns 'error' when timedOut is true and no violations", () => {
+    expect(deriveStatus(baseParsed, true)).toBe("error");
   });
 
   it("returns 'violation' when violations exist", () => {

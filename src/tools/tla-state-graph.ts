@@ -10,7 +10,7 @@ import { parseCfg } from "../parsers/cfg.js";
 import { parseTlcViolationTraces, buildGraphFromTraces } from "../parsers/tlc-output.js";
 import type { ViolationTrace } from "../parsers/tlc-output.js";
 import { disambiguateActions } from "../parsers/action-disambiguator.js";
-import { discoverHappyPaths } from "../parsers/happy-paths.js";
+import { discoverHappyPaths, type HappyPath, type HappyPathEntry } from "../parsers/happy-paths.js";
 import { absolutePath } from "../lib/schemas.js";
 import { formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
@@ -71,7 +71,12 @@ export function registerTlaStateGraph(server: McpServer): void {
           }
 
           const violationFinalStates = buildViolationFinalStates(traceGraph.violations);
-          const happyPaths = discoverHappyPaths(traceGraph.initialStateId, transitions, violationFinalStates);
+          let happyPaths = discoverHappyPaths(traceGraph.initialStateId, transitions, violationFinalStates);
+
+          // Fallback: extract non-violating prefixes from violation traces
+          if (happyPaths.length === 0 && traceGraph.violations.length > 0) {
+            happyPaths = extractPrefixHappyPaths(traceGraph.violations, violationFinalStates);
+          }
 
           return formatToolResponse({
             status: "success",
@@ -189,4 +194,49 @@ function buildViolationFinalStates(violations: ViolationTrace[]): Set<string> {
     }
   }
   return finals;
+}
+
+/**
+ * Extract non-violating prefixes from violation traces as happy paths.
+ * Used as a fallback in traces-only mode when BFS finds no happy paths.
+ * Takes the longest prefix of each violation trace that doesn't include
+ * the violating final state. Deduplicates by action sequence.
+ */
+function extractPrefixHappyPaths(
+  violations: ViolationTrace[],
+  violationFinalStates: Set<string>,
+  maxPaths: number = 5,
+): HappyPath[] {
+  const paths: HappyPath[] = [];
+  const seenActionSeqs = new Set<string>();
+
+  for (const v of violations) {
+    // Find the last non-violating index (exclude back-to-state sentinels and violation final states)
+    let prefixEnd = v.trace.length;
+    for (let i = v.trace.length - 1; i >= 0; i--) {
+      if (v.trace[i].action === "Back to state") continue;
+      if (v.trace[i].stateId && violationFinalStates.has(v.trace[i].stateId!)) {
+        prefixEnd = i;
+      }
+      break;
+    }
+
+    // Need at least 2 states for a meaningful prefix
+    if (prefixEnd < 2) continue;
+
+    const prefix = v.trace.slice(0, prefixEnd);
+    const actionSeq = JSON.stringify(prefix.map(e => e.action));
+    if (seenActionSeqs.has(actionSeq)) continue;
+    seenActionSeqs.add(actionSeq);
+
+    const trace: HappyPathEntry[] = prefix.map(e => ({
+      stateId: e.stateId ?? "",
+      action: e.action,
+    }));
+    paths.push({ trace });
+
+    if (paths.length >= maxPaths) break;
+  }
+
+  return paths;
 }

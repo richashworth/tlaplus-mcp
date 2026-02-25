@@ -35,10 +35,16 @@ export function registerTlaParse(server: McpServer): void {
         const modulesParsed: string[] = [];
 
         // Parse "Parsing file" lines to find modules parsed
+        // Also build a map from module name to file path for error locations
         const parsingFileRe = /Parsing file\s+(.+)/g;
+        const moduleToPath = new Map<string, string>();
         let match: RegExpExecArray | null;
         while ((match = parsingFileRe.exec(output)) !== null) {
-          modulesParsed.push(match[1].trim());
+          const filePath = match[1].trim();
+          modulesParsed.push(filePath);
+          // Extract module name from file path (basename without .tla)
+          const baseName = filePath.replace(/^.*[\\/]/, "").replace(/\.tla$/, "");
+          moduleToPath.set(baseName, filePath);
         }
 
         // Parse semantic errors: "Semantic error(s):" followed by error lines
@@ -59,10 +65,11 @@ export function registerTlaParse(server: McpServer): void {
             }
           }
           const locationStr = match[0];
+          const moduleName = match[3];
           errors.push({
             message: description ? `${description} — ${locationStr}` : locationStr,
             location: {
-              file: match[3],
+              file: moduleToPath.get(moduleName) ?? moduleName,
               line: parseInt(match[1], 10),
               col: parseInt(match[2], 10),
             },
