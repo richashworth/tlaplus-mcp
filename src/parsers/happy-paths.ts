@@ -41,6 +41,7 @@ export function discoverHappyPaths(
   const paths: HappyPath[] = [];
   const seenActionSeqs = new Set<string>();
 
+  const visited = new Set<string>();
   const queue: BfsNode[] = [{
     stateId: initialStateId,
     actions: [],
@@ -49,6 +50,11 @@ export function discoverHappyPaths(
 
   while (queue.length > 0 && paths.length < maxPaths) {
     const node = queue.shift()!;
+
+    // Skip states already fully processed to bound BFS to O(V+E)
+    if (visited.has(node.stateId)) continue;
+    visited.add(node.stateId);
+
     const outgoing = transitions[node.stateId];
 
     // Terminal state: no outgoing transitions (or only to violation states)

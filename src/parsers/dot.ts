@@ -24,8 +24,8 @@ export interface DotGraph {
   initialStateId: string;
 }
 
-const EDGE_RE = /(\d+)\s*->\s*(\d+)\s*\[label="((?:[^"\\]|\\.)*)"\s*.*?\]/g;
-const NODE_RE = /^(\d+)\s*\[label="((?:[^"\\]|\\.)*)"\s*(.*?)\]/gm;
+const EDGE_RE = /(-?\d+)\s*->\s*(-?\d+)\s*\[label="((?:[^"\\]|\\.)*)"\s*.*?\]/g;
+const NODE_RE = /^(-?\d+)\s*\[label="((?:[^"\\]|\\.)*)"\s*(.*?)\]/gm;
 
 /**
  * Parse TLC DOT file content into a structured graph.

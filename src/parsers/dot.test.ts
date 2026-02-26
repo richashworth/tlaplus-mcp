@@ -57,4 +57,40 @@ describe("parseDot", () => {
   it("throws on empty DOT", () => {
     expect(() => parseDot("digraph {}")).toThrow("Could not parse any states");
   });
+
+  it("parses negative fingerprint node IDs (real TLC output)", () => {
+    const dot = `digraph StateGraph {
+8557055779591771203 [label="/\\\\ x = 1" style = filled]
+-5088583475362684799 [label="/\\\\ x = 2"]
+8557055779591771203 -> -5088583475362684799 [label="Next"]
+-5088583475362684799 -> 8557055779591771203 [label="Reset"]
+}`;
+    const result = parseDot(dot);
+    expect(Object.keys(result.states)).toHaveLength(2);
+    expect(result.states["8557055779591771203"].vars).toEqual({ x: 1 });
+    expect(result.states["-5088583475362684799"].vars).toEqual({ x: 2 });
+    expect(result.initialStateId).toBe("8557055779591771203");
+    expect(result.edges).toHaveLength(2);
+    expect(result.edges[0]).toEqual({
+      source: "8557055779591771203",
+      target: "-5088583475362684799",
+      action: "Next",
+    });
+  });
+
+  it("parses record-valued variables with negative node IDs", () => {
+    const dot = `digraph StateGraph {
+100 [label="/\\\\ workerState = (w1 :> \\"idle\\" @@ w2 :> \\"idle\\")\\n/\\\\ resourceInfo = (r1 :> [holder |-> \\"none\\", locked |-> FALSE])" style = filled]
+-200 [label="/\\\\ workerState = (w1 :> \\"working\\" @@ w2 :> \\"idle\\")\\n/\\\\ resourceInfo = (r1 :> [holder |-> w1, locked |-> TRUE])"]
+100 -> -200 [label="Acquire"]
+}`;
+    const result = parseDot(dot);
+    expect(Object.keys(result.states)).toHaveLength(2);
+    expect(result.states["-200"].vars).toEqual({
+      workerState: { w1: "working", w2: "idle" },
+      resourceInfo: { r1: { holder: "w1", locked: true } },
+    });
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0].target).toBe("-200");
+  });
 });
