@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename, join } from "node:path";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
@@ -28,6 +28,7 @@ export function registerTlcCheck(server: McpServer): void {
       generate_states: z.boolean().optional().describe("Dump state graph in DOT format"),
       dump_path: z.string().optional().describe("Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed."),
       extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
+      output_file: absolutePath.optional().describe("Write raw TLC output to this file instead of returning it inline. Response will contain output_file path instead of raw_output."),
     },
     async (params) => {
       try {
@@ -115,6 +116,14 @@ export function registerTlcCheck(server: McpServer): void {
         }
         const status = deriveStatus(parsed, result.timedOut);
 
+        // Write output to file or return inline
+        const outputFileField: Record<string, string> = {};
+        if (params.output_file) {
+          mkdirSync(dirname(params.output_file), { recursive: true });
+          writeFileSync(params.output_file, output, "utf-8");
+          outputFileField.output_file = params.output_file;
+        }
+
         return formatToolResponse({
           status,
           states_found: parsed.statesFound ?? 0,
@@ -124,7 +133,8 @@ export function registerTlcCheck(server: McpServer): void {
           errors: parsed.errors,
           coverage: parsed.coverage,
           ...(dumpFile ? { dump_file: dumpFile } : {}),
-          raw_output: output,
+          ...outputFileField,
+          ...(params.output_file ? {} : { raw_output: output }),
         });
       } catch (err: unknown) {
         return formatToolError(err);

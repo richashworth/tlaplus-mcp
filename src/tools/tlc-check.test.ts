@@ -15,7 +15,7 @@ vi.mock("../lib/process.js", () => ({
 }));
 
 vi.mock("../lib/schemas.js", () => ({
-  absolutePath: { describe: () => ({ _def: {} }) } as any,
+  absolutePath: { describe: () => ({ _def: {} }), optional: () => ({ describe: () => ({ _def: {} }) }) } as any,
 }));
 
 vi.mock("node:fs", () => ({
@@ -23,8 +23,10 @@ vi.mock("node:fs", () => ({
   mkdtempSync: vi.fn(() => "/tmp/tlc-meta-mock"),
   rmSync: vi.fn(),
   existsSync: vi.fn(() => true),
+  writeFileSync: vi.fn(),
 }));
 
+import { mkdirSync, writeFileSync } from "node:fs";
 import { registerTlcCheck } from "./tlc-check.js";
 
 describe("tlc_check", () => {
@@ -136,5 +138,38 @@ describe("tlc_check", () => {
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("Java not found");
+  });
+
+  describe("output_file", () => {
+    it("writes output to file and returns output_file instead of raw_output", async () => {
+      const result = await handler({
+        tla_file: "/specs/Spec.tla",
+        output_file: "/out/dir/tlc.out",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.output_file).toBe("/out/dir/tlc.out");
+      expect(parsed.raw_output).toBeUndefined();
+      expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
+        "/out/dir/tlc.out",
+        expect.any(String),
+        "utf-8",
+      );
+    });
+
+    it("creates parent directory for output_file", async () => {
+      await handler({
+        tla_file: "/specs/Spec.tla",
+        output_file: "/out/deep/dir/tlc.out",
+      });
+      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith("/out/deep/dir", { recursive: true });
+    });
+
+    it("returns raw_output inline when output_file is omitted", async () => {
+      const result = await handler({ tla_file: "/specs/Spec.tla" });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.raw_output).toBeDefined();
+      expect(parsed.output_file).toBeUndefined();
+      expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+    });
   });
 });

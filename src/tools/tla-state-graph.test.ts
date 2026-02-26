@@ -11,15 +11,21 @@ vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   const mockExistsSync = vi.fn(() => true);
   const mockReadFileSync = vi.fn();
+  const mockWriteFileSync = vi.fn();
+  const mockMkdirSync = vi.fn();
   return {
     ...actual,
     default: {
       ...actual,
       existsSync: mockExistsSync,
       readFileSync: mockReadFileSync,
+      writeFileSync: mockWriteFileSync,
+      mkdirSync: mockMkdirSync,
     },
     existsSync: mockExistsSync,
     readFileSync: mockReadFileSync,
+    writeFileSync: mockWriteFileSync,
+    mkdirSync: mockMkdirSync,
   };
 });
 
@@ -180,5 +186,83 @@ State 2: <Next line 10, col 1 of module Spec>
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("dot_file is required");
+  });
+
+  describe("output_file", () => {
+    it("writes JSON to file and returns compact summary", async () => {
+      vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
+
+      const result = await handler({
+        dot_file: "/specs/states.dot",
+        format: "playground",
+        output_file: "/out/graph.json",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.output_file).toBe("/out/graph.json");
+      expect(parsed.state_count).toBe(2);
+      expect(parsed.transition_count).toBe(1);
+      expect(parsed.violation_count).toBe(0);
+      expect(parsed.happy_path_count).toBeGreaterThanOrEqual(1);
+      expect(parsed.sample_state).toBeDefined();
+      expect(parsed.sample_state.vars).toHaveProperty("x");
+      // Should NOT contain full states/transitions inline
+      expect(parsed.states).toBeUndefined();
+      expect(parsed.transitions).toBeUndefined();
+      expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        "/out/graph.json",
+        expect.any(String),
+        "utf-8",
+      );
+    });
+
+    it("returns full response when output_file is omitted", async () => {
+      vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
+
+      const result = await handler({
+        dot_file: "/specs/states.dot",
+        format: "playground",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.states).toBeDefined();
+      expect(parsed.transitions).toBeDefined();
+      expect(parsed.output_file).toBeUndefined();
+      expect(vi.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
+    });
+
+    it("rejects output_file with non-playground format", async () => {
+      vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
+
+      const result = await handler({
+        dot_file: "/specs/states.dot",
+        format: "structured",
+        output_file: "/out/graph.json",
+      });
+      expect(result.isError).toBe(true);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.error).toContain("output_file is only supported with playground format");
+    });
+
+    it("works with traces_only mode", async () => {
+      const tlcOutput = `Error: Invariant TypeOK is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+`;
+
+      const result = await handler({
+        format: "playground",
+        traces_only: true,
+        tlc_output: tlcOutput,
+        output_file: "/out/traces.json",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.output_file).toBe("/out/traces.json");
+      expect(parsed.partial).toBe(true);
+      expect(parsed.state_count).toBe(2);
+      expect(parsed.states).toBeUndefined();
+      expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalled();
+    });
   });
 });

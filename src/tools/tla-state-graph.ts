@@ -3,6 +3,7 @@
  */
 
 import fs from "node:fs";
+import { dirname } from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseDot } from "../parsers/dot.js";
@@ -40,9 +41,17 @@ export function registerTlaStateGraph(server: McpServer): void {
         .boolean()
         .default(false)
         .describe("When true, build a minimal graph from TLC output traces alone (no DOT file needed). Returns partial: true."),
+      output_file: absolutePath
+        .optional()
+        .describe("Write playground JSON to this file instead of returning it inline (playground format only). Response will contain a compact summary."),
     },
-    async ({ dot_file, cfg_file, tlc_output_file, tlc_output, format, traces_only }) => {
+    async ({ dot_file, cfg_file, tlc_output_file, tlc_output, format, traces_only, output_file }) => {
       try {
+        // output_file only makes sense for playground format
+        if (output_file && format !== "playground") {
+          throw new Error("output_file is only supported with playground format");
+        }
+
         // -- traces_only mode: build graph from TLC output alone ---------------
         if (traces_only) {
           if (format !== "playground") {
@@ -78,7 +87,7 @@ export function registerTlaStateGraph(server: McpServer): void {
             happyPaths = extractPrefixHappyPaths(traceGraph.violations, violationFinalStates);
           }
 
-          return formatToolResponse({
+          return buildPlaygroundResponse({
             status: "success",
             partial: true,
             initialStateId: traceGraph.initialStateId,
@@ -87,7 +96,7 @@ export function registerTlaStateGraph(server: McpServer): void {
             invariants,
             violations: traceGraph.violations,
             happyPaths,
-          });
+          }, output_file);
         }
 
         // -- Normal mode: parse DOT file ---------------------------------------
@@ -164,7 +173,7 @@ export function registerTlaStateGraph(server: McpServer): void {
         const violationFinalStates = buildViolationFinalStates(violations);
         const happyPaths = discoverHappyPaths(graph.initialStateId, transitions, violationFinalStates);
 
-        return formatToolResponse({
+        return buildPlaygroundResponse({
           status: "success",
           partial: false,
           initialStateId: graph.initialStateId,
@@ -173,12 +182,54 @@ export function registerTlaStateGraph(server: McpServer): void {
           invariants,
           violations,
           happyPaths,
-        });
+        }, output_file);
       } catch (err: unknown) {
         return formatToolError(err);
       }
     },
   );
+}
+
+interface PlaygroundData {
+  status: string;
+  partial: boolean;
+  initialStateId: string;
+  states: Record<string, { label: string; vars: Record<string, unknown> }>;
+  transitions: Record<string, import("../parsers/action-disambiguator.js").DisambiguatedTransition[]>;
+  invariants: string[];
+  violations: ViolationTrace[];
+  happyPaths: HappyPath[];
+}
+
+function buildPlaygroundResponse(data: PlaygroundData, outputFile?: string) {
+  if (!outputFile) {
+    return formatToolResponse(data);
+  }
+
+  // Write full JSON to file, return compact summary
+  fs.mkdirSync(dirname(outputFile), { recursive: true });
+  fs.writeFileSync(outputFile, JSON.stringify(data), "utf-8");
+
+  const sampleState = data.states[data.initialStateId]
+    ? { vars: data.states[data.initialStateId].vars }
+    : undefined;
+
+  const transitionCount = Object.values(data.transitions).reduce(
+    (sum, edges) => sum + edges.length, 0,
+  );
+
+  return formatToolResponse({
+    status: data.status,
+    output_file: outputFile,
+    partial: data.partial,
+    initialStateId: data.initialStateId,
+    state_count: Object.keys(data.states).length,
+    transition_count: transitionCount,
+    invariants: data.invariants,
+    violation_count: data.violations.length,
+    happy_path_count: data.happyPaths.length,
+    sample_state: sampleState,
+  });
 }
 
 function buildViolationFinalStates(violations: ViolationTrace[]): Set<string> {
