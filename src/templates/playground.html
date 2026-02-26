@@ -192,9 +192,9 @@ body {
 
 /* ===== Action Buttons ===== */
 .actions-bar {
-  margin-top: auto;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .actions-bar h3 {
@@ -210,6 +210,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .action-btn {
@@ -840,16 +842,6 @@ body {
 .view-panel { display: none; flex: 1; min-height: 0; overflow-y: auto; }
 .view-panel.active { display: block; }
 
-.visual-hint {
-  font-size: 12px;
-  color: var(--text-3);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  line-height: 1.5;
-}
 
 </style>
 <link rel="stylesheet" href="playground-gen.css">
@@ -874,7 +866,14 @@ body {
 
     <div class="view-tabs" id="view-tabs">
       <button class="view-tab active" data-tab="data" onclick="switchTab('data')">Data</button>
-      <button class="view-tab" data-tab="visual" onclick="switchTab('visual')">Visual</button>
+      <button class="view-tab" data-tab="visual" onclick="switchTab('visual')" title="First-pass visual — ask Claude to refine layout, colors, or icons in your session">Visual</button>
+    </div>
+
+    <div class="actions-bar">
+      <h3>Actions</h3>
+      <div class="actions-grid" id="actions-grid">
+        <!-- Action buttons generated dynamically -->
+      </div>
     </div>
 
     <div id="prototype" class="view-panel active">
@@ -883,13 +882,6 @@ body {
 
     <div id="prototype-visual" class="view-panel">
       <!-- renderStateVisual() output goes here (domain diagram) -->
-    </div>
-
-    <div class="actions-bar">
-      <h3>Actions</h3>
-      <div class="actions-grid" id="actions-grid">
-        <!-- Action buttons generated dynamically -->
-      </div>
     </div>
   </div>
 
@@ -1062,7 +1054,13 @@ function checkInvariants() {
   var listEl = document.getElementById('invariants-list');
   listEl.innerHTML = '';
 
-  (GRAPH.invariants || []).forEach(function(name) {
+  var invariantNames = GRAPH.invariants || [];
+  if (invariantNames.length === 0 && !(GRAPH.violations || []).some(function(v) { return v.type === 'deadlock'; })) {
+    listEl.innerHTML = '<div class="actions-empty">No invariants defined.</div>';
+    return;
+  }
+
+  invariantNames.forEach(function(name) {
     // Check if current state violates this invariant/property
     var violated = false;
     (GRAPH.violations || []).forEach(function(v) {
@@ -1144,11 +1142,10 @@ function renderAll() {
 
   // Visual view
   var visualEl = document.getElementById('prototype-visual');
-  var hintHtml = '<div class="visual-hint">This is a first-pass visual \u2014 ask Claude to refine the layout, colors, or icons in your session.</div>';
   visualEl.innerHTML = state
-    ? hintHtml + (typeof renderStateVisual === 'function'
+    ? (typeof renderStateVisual === 'function'
         ? renderStateVisual(state.vars)
-        : '<p style="color:var(--muted);padding:1rem">Visual view not available.</p>')
+        : '<p style="color:var(--text-3);padding:1rem">Visual view not available.</p>')
     : fallback;
 
   // Crossfade animation on the active panel
