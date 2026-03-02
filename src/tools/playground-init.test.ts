@@ -195,7 +195,7 @@ describe("playground_init", () => {
       expect(genJs).toContain("var INVARIANT_LABELS");
       expect(genJs).toContain("var SCENARIO_LABELS");
       expect(genJs).toContain("var HAPPY_PATHS");
-      expect(genJs).toContain("function renderState");
+      expect(genJs).not.toContain("function renderState(");
       expect(genJs).toContain("function renderStateVisual");
     });
 

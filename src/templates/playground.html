@@ -982,6 +982,74 @@ function dispatch(index) {
 // Rendering
 // =====================================================================
 
+function renderState(vars) {
+  var keys = Object.keys(vars);
+  if (keys.length === 0) {
+    return '<div class="rs-empty">No variables to display</div>';
+  }
+  var html = '';
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    html += '<div class="rs-card" data-var="' + escapeHtml(k) + '">';
+    html += '<div class="rs-card-header"><span class="rs-card-title">' + escapeHtml(k) + '</span></div>';
+    html += renderValue(vars[k]);
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderValue(val) {
+  if (typeof val === 'boolean') {
+    return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'
+      + (val ? 'var(--green)' : 'var(--text-3)') + '"></span> ' + val;
+  }
+  if (typeof val === 'number') {
+    return '<div class="rs-kv"><span class="rs-kv-key">value</span><span class="rs-kv-val">' + val + '</span></div>';
+  }
+  if (typeof val === 'string') {
+    return '<span class="rs-badge rs-badge-info">' + escapeHtml(val) + '</span>';
+  }
+  if (Array.isArray(val)) {
+    if (val.length > 0 && val.every(function(x) { return typeof x === 'string'; })) {
+      var h = '';
+      for (var i = 0; i < val.length; i++) {
+        h += '<span class="rs-badge rs-badge-muted">' + escapeHtml(val[i]) + '</span> ';
+      }
+      return h;
+    }
+    var h2 = '<div class="rs-pipeline">';
+    for (var j = 0; j < val.length; j++) {
+      if (j > 0) h2 += '<div class="rs-pipeline-arrow"></div>';
+      h2 += '<div class="rs-pipeline-step"><div class="rs-pipeline-dot"></div>' + escapeHtml(JSON.stringify(val[j])) + '</div>';
+    }
+    h2 += '</div>';
+    return h2;
+  }
+  if (val !== null && typeof val === 'object') {
+    var okeys = Object.keys(val);
+    var allPrimitive = okeys.length > 0 && okeys.every(function(k) {
+      var v = val[k];
+      return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+    });
+    if (allPrimitive) {
+      var t = '<table class="rs-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>';
+      for (var ti = 0; ti < okeys.length; ti++) {
+        t += '<tr><td>' + escapeHtml(okeys[ti]) + '</td><td>' + escapeHtml(String(val[okeys[ti]])) + '</td></tr>';
+      }
+      t += '</tbody></table>';
+      return t;
+    }
+    var nested = '';
+    for (var ni = 0; ni < okeys.length; ni++) {
+      nested += '<div class="rs-card"><div class="rs-card-header"><span class="rs-card-title">' + escapeHtml(okeys[ni]) + '</span></div>';
+      nested += renderValue(val[okeys[ni]]);
+      nested += '</div>';
+    }
+    return nested;
+  }
+  return '<pre>' + escapeHtml(JSON.stringify(val, null, 2)) + '</pre>';
+}
+
 function renderActions() {
   var grid = document.getElementById('actions-grid');
   grid.innerHTML = '';
