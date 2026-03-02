@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generatePlaygroundJs, generatePlaygroundCss, type PlaygroundGraph } from "./playground-gen.js";
+import { generatePlaygroundDataJs, generatePlaygroundGenJs, generatePlaygroundCss, type PlaygroundGraph } from "./playground-gen.js";
 
 const FIXTURE: PlaygroundGraph = {
   status: "success",
@@ -68,84 +68,115 @@ const FIXTURE: PlaygroundGraph = {
   ],
 };
 
-describe("generatePlaygroundJs", () => {
-  const js = generatePlaygroundJs({ title: "Test Playground", graph: FIXTURE });
+describe("generatePlaygroundDataJs", () => {
+  const dataJs = generatePlaygroundDataJs({ title: "Test Playground", graph: FIXTURE });
 
-  it("contains all required globals", () => {
-    expect(js).toContain("var PLAYGROUND_TITLE");
-    expect(js).toContain("var GRAPH");
-    expect(js).toContain("var ACTION_LABELS");
-    expect(js).toContain("var INVARIANT_LABELS");
-    expect(js).toContain("var SCENARIO_LABELS");
-    expect(js).toContain("var HAPPY_PATHS");
-    expect(js).toContain("function renderState");
-    expect(js).toContain("function renderStateVisual");
+  it("contains PLAYGROUND_TITLE and GRAPH", () => {
+    expect(dataJs).toContain("var PLAYGROUND_TITLE");
+    expect(dataJs).toContain("var GRAPH");
   });
 
-  it("renders string vars with rs-badge-info", () => {
-    expect(js).toContain("rs-badge rs-badge-info");
-  });
-
-  it("renders number vars with rs-kv", () => {
-    expect(js).toContain("rs-kv");
-    expect(js).toContain("rs-kv-key");
-    expect(js).toContain("rs-kv-val");
-  });
-
-  it("renders boolean vars with green/grey dot", () => {
-    expect(js).toContain("border-radius:50%");
-    expect(js).toContain("var(--green)");
-    expect(js).toContain("var(--text-3)");
-  });
-
-  it("renders string[] vars with rs-badge-muted", () => {
-    expect(js).toContain("rs-badge rs-badge-muted");
-  });
-
-  it("renders generic arrays with rs-pipeline", () => {
-    expect(js).toContain("rs-pipeline");
-    expect(js).toContain("rs-pipeline-step");
-  });
-
-  it("renders record(string->string) with rs-table and badge values", () => {
-    expect(js).toContain("rs-table");
-  });
-
-  it("renders nested records with nested rs-card", () => {
-    // The nested var should produce a nested rs-card inside
-    expect(js).toContain("rs-card");
-  });
-
-  it("generates SCENARIO_LABELS from violations correctly", () => {
-    expect(js).toContain('"v1"');
-    expect(js).toContain('"TypeOK"');
-    expect(js).toContain('"Deadlock"');
-    expect(js).toContain("Counterexample trace for TypeOK violation");
-    expect(js).toContain("Counterexample trace for Deadlock violation");
-  });
-
-  it("generates HAPPY_PATHS with correct count and generic titles", () => {
-    expect(js).toContain("Path 1 (2 steps)");
-  });
-
-  it("wraps each variable in a data-var card", () => {
-    expect(js).toContain('data-var="phase"');
-    expect(js).toContain('data-var="count"');
-    expect(js).toContain('data-var="enabled"');
-    expect(js).toContain('data-var="tags"');
-    expect(js).toContain('data-var="queue"');
-    expect(js).toContain('data-var="config"');
-    expect(js).toContain('data-var="scores"');
-    expect(js).toContain('data-var="nested"');
+  it("does not contain presentation globals or functions", () => {
+    expect(dataJs).not.toContain("var ACTION_LABELS");
+    expect(dataJs).not.toContain("var INVARIANT_LABELS");
+    expect(dataJs).not.toContain("var SCENARIO_LABELS");
+    expect(dataJs).not.toContain("var HAPPY_PATHS");
+    expect(dataJs).not.toContain("function renderState");
+    expect(dataJs).not.toContain("function renderStateVisual");
   });
 
   it("produces syntactically valid JS", () => {
-    // Use Function constructor as a lightweight syntax check (no eval side effects)
-    expect(() => new Function(js)).not.toThrow();
+    expect(() => new Function(dataJs)).not.toThrow();
   });
 });
 
-describe("generatePlaygroundJs — empty vars", () => {
+describe("generatePlaygroundGenJs", () => {
+  const genJs = generatePlaygroundGenJs({ graph: FIXTURE });
+
+  it("contains all presentation globals and functions", () => {
+    expect(genJs).toContain("var ACTION_LABELS");
+    expect(genJs).toContain("var INVARIANT_LABELS");
+    expect(genJs).toContain("var SCENARIO_LABELS");
+    expect(genJs).toContain("var HAPPY_PATHS");
+    expect(genJs).toContain("function renderState");
+    expect(genJs).toContain("function renderStateVisual");
+  });
+
+  it("does not contain GRAPH or PLAYGROUND_TITLE", () => {
+    expect(genJs).not.toContain("var GRAPH");
+    expect(genJs).not.toContain("var PLAYGROUND_TITLE");
+  });
+
+  it("renders string vars with rs-badge-info", () => {
+    expect(genJs).toContain("rs-badge rs-badge-info");
+  });
+
+  it("renders number vars with rs-kv", () => {
+    expect(genJs).toContain("rs-kv");
+    expect(genJs).toContain("rs-kv-key");
+    expect(genJs).toContain("rs-kv-val");
+  });
+
+  it("renders boolean vars with green/grey dot", () => {
+    expect(genJs).toContain("border-radius:50%");
+    expect(genJs).toContain("var(--green)");
+    expect(genJs).toContain("var(--text-3)");
+  });
+
+  it("renders string[] vars with rs-badge-muted", () => {
+    expect(genJs).toContain("rs-badge rs-badge-muted");
+  });
+
+  it("renders generic arrays with rs-pipeline", () => {
+    expect(genJs).toContain("rs-pipeline");
+    expect(genJs).toContain("rs-pipeline-step");
+  });
+
+  it("renders record(string->string) with rs-table and badge values", () => {
+    expect(genJs).toContain("rs-table");
+  });
+
+  it("renders nested records with nested rs-card", () => {
+    expect(genJs).toContain("rs-card");
+  });
+
+  it("generates SCENARIO_LABELS from violations correctly", () => {
+    expect(genJs).toContain('"v1"');
+    expect(genJs).toContain('"TypeOK"');
+    expect(genJs).toContain('"Deadlock"');
+    expect(genJs).toContain("Counterexample trace for TypeOK violation");
+    expect(genJs).toContain("Counterexample trace for Deadlock violation");
+  });
+
+  it("generates HAPPY_PATHS with correct count and generic titles", () => {
+    expect(genJs).toContain("Path 1 (2 steps)");
+  });
+
+  it("wraps each variable in a data-var card", () => {
+    expect(genJs).toContain('data-var="phase"');
+    expect(genJs).toContain('data-var="count"');
+    expect(genJs).toContain('data-var="enabled"');
+    expect(genJs).toContain('data-var="tags"');
+    expect(genJs).toContain('data-var="queue"');
+    expect(genJs).toContain('data-var="config"');
+    expect(genJs).toContain('data-var="scores"');
+    expect(genJs).toContain('data-var="nested"');
+  });
+
+  it("produces syntactically valid JS", () => {
+    expect(() => new Function(genJs)).not.toThrow();
+  });
+});
+
+describe("data + gen concatenated", () => {
+  it("produces syntactically valid JS when concatenated", () => {
+    const dataJs = generatePlaygroundDataJs({ title: "Test", graph: FIXTURE });
+    const genJs = generatePlaygroundGenJs({ graph: FIXTURE });
+    expect(() => new Function(dataJs + "\n" + genJs)).not.toThrow();
+  });
+});
+
+describe("generatePlaygroundGenJs — empty vars", () => {
   it("returns rs-empty div for empty vars", () => {
     const emptyGraph: PlaygroundGraph = {
       ...FIXTURE,
@@ -153,20 +184,20 @@ describe("generatePlaygroundJs — empty vars", () => {
         "1": { label: "State 1", vars: {} },
       },
     };
-    const js = generatePlaygroundJs({ title: "Empty", graph: emptyGraph });
-    expect(js).toContain("rs-empty");
+    const genJs = generatePlaygroundGenJs({ graph: emptyGraph });
+    expect(genJs).toContain("rs-empty");
   });
 });
 
-describe("generatePlaygroundJs — missing initialStateId fallback", () => {
+describe("generatePlaygroundGenJs — missing initialStateId fallback", () => {
   it("falls back to first state when initialStateId not in states", () => {
     const graph: PlaygroundGraph = {
       ...FIXTURE,
       initialStateId: "missing",
     };
-    const js = generatePlaygroundJs({ title: "Fallback", graph });
+    const genJs = generatePlaygroundGenJs({ graph });
     // Should still produce renderState with var cards (using first state's vars)
-    expect(js).toContain('data-var="phase"');
+    expect(genJs).toContain('data-var="phase"');
   });
 });
 

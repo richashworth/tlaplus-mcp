@@ -2,9 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import { absolutePath } from "../lib/schemas.js";
 import { formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
-import { generatePlaygroundJs, generatePlaygroundCss, type PlaygroundGraph } from "../generators/playground-gen.js";
+import { generatePlaygroundDataJs, generatePlaygroundGenJs, generatePlaygroundCss, type PlaygroundGraph } from "../generators/playground-gen.js";
 
 function deriveTitle(filePath: string): string {
   // Look for a "playground" directory component and use the parent name
@@ -24,16 +25,19 @@ export function registerPlaygroundInit(server: McpServer): void {
 
   server.tool(
     "playground_init",
-    "Create a playground directory, copy the HTML template, and optionally generate playground-gen.js/css from a state graph JSON file. " +
+    "Create a playground directory, copy the HTML template, and optionally generate playground-data.js, playground-gen.js, and playground-gen.css from a state graph JSON file. " +
       "When state_graph_file is provided, generates a complete working playground deterministically. " +
-      "Returns { html_path, js_path?, css_path? }.",
+      "Returns { html_path, data_js_path?, gen_js_path?, js_path?, css_path? }.",
     {
       target_dir: absolutePath.describe(
         "Absolute path to the playground directory (e.g., /Users/you/project/specs/MyModule/playground/)"
       ),
       state_graph_file: absolutePath.optional().describe(
         "Absolute path to a playground-format JSON file (written by tla_state_graph with output_file). " +
-        "When provided, generates playground-gen.js and playground-gen.css automatically."
+        "When provided, generates playground-data.js, playground-gen.js, and playground-gen.css automatically."
+      ),
+      title: z.string().optional().describe(
+        "Title for the playground (e.g., the system name). Falls back to path-based heuristic if not provided."
       ),
     },
     async (params) => {
@@ -42,11 +46,12 @@ export function registerPlaygroundInit(server: McpServer): void {
         const htmlPath = join(params.target_dir, "playground.html");
 
         // Read template and inject cache-busting query params so browsers
-        // pick up fresh playground-gen.js/css on every re-run.
+        // pick up fresh playground-data.js/playground-gen.js/css on every re-run.
         let html = await readFile(templatePath, "utf-8");
         const bust = "?v=" + Date.now();
         html = html
           .replace('href="playground-gen.css"', 'href="playground-gen.css' + bust + '"')
+          .replace('src="playground-data.js"', 'src="playground-data.js' + bust + '"')
           .replace('src="playground-gen.js"', 'src="playground-gen.js' + bust + '"');
         await writeFile(htmlPath, html, "utf-8");
 
@@ -56,18 +61,27 @@ export function registerPlaygroundInit(server: McpServer): void {
           const graphJson = await readFile(params.state_graph_file, "utf-8");
           const graph: PlaygroundGraph = JSON.parse(graphJson);
 
-          // Derive title from path: look for "playground" dir, use parent name
-          const title = deriveTitle(params.state_graph_file);
+          // Use provided title or fall back to path-based heuristic
+          const title = params.title || deriveTitle(params.state_graph_file);
 
-          const jsContent = generatePlaygroundJs({ title, graph });
+          const dataJsContent = generatePlaygroundDataJs({ title, graph });
+          const genJsContent = generatePlaygroundGenJs({ graph });
           const cssContent = generatePlaygroundCss();
 
-          const jsPath = join(params.target_dir, "playground-gen.js");
+          const dataJsPath = join(params.target_dir, "playground-data.js");
+          const genJsPath = join(params.target_dir, "playground-gen.js");
           const cssPath = join(params.target_dir, "playground-gen.css");
-          await writeFile(jsPath, jsContent, "utf-8");
+          await writeFile(dataJsPath, dataJsContent, "utf-8");
+          await writeFile(genJsPath, genJsContent, "utf-8");
           await writeFile(cssPath, cssContent, "utf-8");
 
-          return formatToolResponse({ html_path: htmlPath, js_path: jsPath, css_path: cssPath });
+          return formatToolResponse({
+            html_path: htmlPath,
+            data_js_path: dataJsPath,
+            gen_js_path: genJsPath,
+            js_path: genJsPath,
+            css_path: cssPath,
+          });
         }
 
         return formatToolResponse({ html_path: htmlPath });

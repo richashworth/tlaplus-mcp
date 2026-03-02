@@ -115,7 +115,7 @@ describe("playground_init", () => {
       ],
     };
 
-    it("generates all 3 files when state_graph_file is provided", async () => {
+    it("generates all 4 files when state_graph_file is provided", async () => {
       const targetDir = join(tempDir, "MySpec", "playground");
       const graphFile = join(tempDir, "MySpec", "playground", "graph.json");
 
@@ -126,15 +126,18 @@ describe("playground_init", () => {
       const parsed = JSON.parse(result.content[0].text);
 
       expect(parsed.html_path).toBe(join(targetDir, "playground.html"));
+      expect(parsed.data_js_path).toBe(join(targetDir, "playground-data.js"));
+      expect(parsed.gen_js_path).toBe(join(targetDir, "playground-gen.js"));
       expect(parsed.js_path).toBe(join(targetDir, "playground-gen.js"));
       expect(parsed.css_path).toBe(join(targetDir, "playground-gen.css"));
 
       expect(existsSync(parsed.html_path)).toBe(true);
-      expect(existsSync(parsed.js_path)).toBe(true);
+      expect(existsSync(parsed.data_js_path)).toBe(true);
+      expect(existsSync(parsed.gen_js_path)).toBe(true);
       expect(existsSync(parsed.css_path)).toBe(true);
     });
 
-    it("generated JS contains all required globals", async () => {
+    it("playground-data.js contains PLAYGROUND_TITLE and GRAPH", async () => {
       const targetDir = join(tempDir, "gen-globals", "playground");
       const graphFile = join(tempDir, "gen-globals", "graph.json");
 
@@ -143,15 +146,54 @@ describe("playground_init", () => {
 
       await handler({ target_dir: targetDir, state_graph_file: graphFile });
 
-      const jsContent = await readFile(join(targetDir, "playground-gen.js"), "utf-8");
-      expect(jsContent).toContain("var PLAYGROUND_TITLE");
-      expect(jsContent).toContain("var GRAPH");
-      expect(jsContent).toContain("var ACTION_LABELS");
-      expect(jsContent).toContain("var INVARIANT_LABELS");
-      expect(jsContent).toContain("var SCENARIO_LABELS");
-      expect(jsContent).toContain("var HAPPY_PATHS");
-      expect(jsContent).toContain("function renderState");
-      expect(jsContent).toContain("function renderStateVisual");
+      const dataJs = await readFile(join(targetDir, "playground-data.js"), "utf-8");
+      expect(dataJs).toContain("var PLAYGROUND_TITLE");
+      expect(dataJs).toContain("var GRAPH");
+    });
+
+    it("playground-gen.js contains presentation globals and functions", async () => {
+      const targetDir = join(tempDir, "gen-globals2", "playground");
+      const graphFile = join(tempDir, "gen-globals2", "graph.json");
+
+      await mkdir(join(tempDir, "gen-globals2"), { recursive: true });
+      await writeFile(graphFile, JSON.stringify(GRAPH_FIXTURE));
+
+      await handler({ target_dir: targetDir, state_graph_file: graphFile });
+
+      const genJs = await readFile(join(targetDir, "playground-gen.js"), "utf-8");
+      expect(genJs).toContain("var ACTION_LABELS");
+      expect(genJs).toContain("var INVARIANT_LABELS");
+      expect(genJs).toContain("var SCENARIO_LABELS");
+      expect(genJs).toContain("var HAPPY_PATHS");
+      expect(genJs).toContain("function renderState");
+      expect(genJs).toContain("function renderStateVisual");
+    });
+
+    it("playground-gen.js does NOT contain GRAPH or PLAYGROUND_TITLE", async () => {
+      const targetDir = join(tempDir, "gen-sep", "playground");
+      const graphFile = join(tempDir, "gen-sep", "graph.json");
+
+      await mkdir(join(tempDir, "gen-sep"), { recursive: true });
+      await writeFile(graphFile, JSON.stringify(GRAPH_FIXTURE));
+
+      await handler({ target_dir: targetDir, state_graph_file: graphFile });
+
+      const genJs = await readFile(join(targetDir, "playground-gen.js"), "utf-8");
+      expect(genJs).not.toContain("var GRAPH");
+      expect(genJs).not.toContain("var PLAYGROUND_TITLE");
+    });
+
+    it("uses provided title instead of path-based heuristic", async () => {
+      const targetDir = join(tempDir, "custom-title", "playground");
+      const graphFile = join(tempDir, "custom-title", "graph.json");
+
+      await mkdir(join(tempDir, "custom-title"), { recursive: true });
+      await writeFile(graphFile, JSON.stringify(GRAPH_FIXTURE));
+
+      await handler({ target_dir: targetDir, state_graph_file: graphFile, title: "My Custom Title" });
+
+      const dataJs = await readFile(join(targetDir, "playground-data.js"), "utf-8");
+      expect(dataJs).toContain('"My Custom Title"');
     });
 
     it("returns error for missing state_graph_file", async () => {
