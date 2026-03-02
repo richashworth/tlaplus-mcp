@@ -9,8 +9,13 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
+import { getJarPath } from "./lib/java.js";
 
 const server = createServer();
+
+// Pre-download tla2tools.jar so it's ready before any tool call.
+// Errors are non-fatal — tools will retry on first invocation.
+getJarPath().catch(() => {});
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
