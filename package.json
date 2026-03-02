@@ -36,9 +36,9 @@
     "build": "tsc && rm -rf dist/templates && cp -r src/templates dist/templates",
     "start": "node dist/index.js",
     "dev": "rm -rf dist/templates && cp -r src/templates dist/templates && tsc --watch",
+    "prepare": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
