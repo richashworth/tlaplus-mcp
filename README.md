@@ -4,7 +4,7 @@ MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as struc
 
 ## Relationship to tlaplus-workflow
 
-This server is the tooling backend for [tlaplus-workflow](https://github.com/richardashworth/tlaplus-workflow), a Claude Code plugin that hides TLA+ formal verification behind a conversational interface.
+This server is the tooling backend for [tlaplus-workflow](https://github.com/richashworth/tlaplus-workflow), a Claude Code plugin that hides TLA+ formal verification behind a conversational interface.
 
 **tlaplus-workflow** provides the agents (specifier, verifier, animator, etc.) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
 
@@ -26,29 +26,31 @@ tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
 ## Installation
 
 ```bash
-npm install
-npm run build
+npx tlaplus-mcp
+```
+
+Or install globally:
+
+```bash
+npm install -g tlaplus-mcp
 ```
 
 ### Configure in Claude Code
 
-Add to your MCP server config (`.claude/settings.json` or per-project):
+Add to your MCP server config (`.claude/settings.json` or per-project `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "tlaplus": {
-      "command": "node",
-      "args": ["/path/to/tlaplus-mcp/dist/index.js"],
-      "env": {
-        "TLC_JAR_PATH": "/path/to/tla2tools.jar"
-      }
+      "command": "npx",
+      "args": ["-y", "tlaplus-mcp"]
     }
   }
 }
 ```
 
-The server auto-downloads `tla2tools.jar` on first use if `TLC_JAR_PATH` is not set.
+The server auto-downloads `tla2tools.jar` to `~/.tlaplus-mcp/lib/` on first use. Set `TLC_JAR_PATH` to override.
 
 ## Prerequisites
 
@@ -69,6 +71,7 @@ The server auto-downloads `tla2tools.jar` on first use if `TLC_JAR_PATH` is not 
 | `tlc_coverage` | Run TLC with action coverage reporting |
 | `tla_tex` | Typeset a spec as PDF via TLATeX |
 | `tla_state_graph` | Parse a TLC DOT state graph into structured JSON |
+| `playground_init` | Copy playground template and generate data/render JS files |
 
 All tools return structured JSON with a `raw_output` field for fallback. Errors are returned as `isError` responses so the LLM can adapt.
 
@@ -140,6 +143,9 @@ src/
     tlc-coverage.ts           # tlc_coverage tool
     tla-tex.ts                # tla_tex tool
     tla-state-graph.ts        # tla_state_graph tool
+    playground-init.ts        # playground_init tool
+  generators/
+    playground-gen.ts         # Playground JS/CSS generation (pure functions)
   resources/
     specs.ts                  # MCP resources for browsing specs and output
 ```

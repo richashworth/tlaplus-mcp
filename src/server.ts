@@ -5,9 +5,13 @@
  * both by the stdio entry point and by integration tests.
  */
 
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { registerTlcCheck } from "./tools/tlc-check.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
 import { registerTlcSimulate } from "./tools/tlc-simulate.js";
 import { registerTlaParse } from "./tools/tla-parse.js";
 import { registerTlaEvaluate } from "./tools/tla-evaluate.js";
@@ -22,7 +26,7 @@ import { registerResources } from "./resources/specs.js";
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "tlaplus-mcp",
-    version: "0.1.0",
+    version: pkg.version,
   });
 
   // Register all tools

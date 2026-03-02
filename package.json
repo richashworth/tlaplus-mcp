@@ -2,17 +2,43 @@
   "name": "tlaplus-mcp",
   "version": "0.1.0",
   "description": "MCP server for TLA+ toolchain (TLC, SANY, PlusCal, TLATeX)",
+  "license": "MIT",
+  "author": "Richard Ashworth",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/richashworth/tlaplus-mcp.git"
+  },
+  "homepage": "https://github.com/richashworth/tlaplus-mcp",
+  "bugs": {
+    "url": "https://github.com/richashworth/tlaplus-mcp/issues"
+  },
+  "keywords": [
+    "tla+",
+    "tlaplus",
+    "mcp",
+    "model-checking",
+    "tlc",
+    "formal-verification",
+    "pluscal",
+    "model-context-protocol"
+  ],
   "type": "module",
   "bin": {
     "tlaplus-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc && rm -rf dist/templates && cp -r src/templates dist/templates",
     "start": "node dist/index.js",
     "dev": "rm -rf dist/templates && cp -r src/templates dist/templates && tsc --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"

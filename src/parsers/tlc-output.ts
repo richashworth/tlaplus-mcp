@@ -712,9 +712,6 @@ export function buildGraphFromTraces(output: string): TraceOnlyGraph {
   const edges: Array<{ source: string; target: string; action: string }> = [];
   let initialStateId = "";
 
-  // For each raw trace, build a synthetic-ID lookup so violations reference synthetic IDs
-  const syntheticLookup = new Map<string, string>(); // same as varKeyToId, built incrementally
-
   const violations: ViolationTrace[] = [];
   let vid = 0;
 
