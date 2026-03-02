@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { captureToolHandler } from "../test-utils.js";
-import { registerPlaygroundInit } from "./playground-init.js";
+import { registerPlaygroundInit, replaceOrThrow } from "./playground-init.js";
 
 describe("playground_init", () => {
   let handler: (params: any) => Promise<any>;
@@ -78,6 +78,36 @@ describe("playground_init", () => {
 
     // Restore permissions for cleanup
     await chmod(readonlyDir, 0o755);
+  });
+
+  it("injects cache-busting params into all 3 asset references", async () => {
+    const targetDir = join(tempDir, "cache-bust");
+    await handler({ target_dir: targetDir });
+
+    const html = await readFile(join(targetDir, "playground.html"), "utf-8");
+
+    // Cache-busted versions present
+    expect(html).toMatch(/href="playground-gen\.css\?v=\d+"/);
+    expect(html).toMatch(/src="playground-data\.js\?v=\d+"/);
+    expect(html).toMatch(/src="playground-gen\.js\?v=\d+"/);
+
+    // Original un-busted references absent
+    expect(html).not.toContain('href="playground-gen.css"');
+    expect(html).not.toContain('src="playground-data.js"');
+    expect(html).not.toContain('src="playground-gen.js"');
+  });
+
+  describe("replaceOrThrow", () => {
+    it("replaces when match exists", () => {
+      const result = replaceOrThrow("hello world", "world", "there");
+      expect(result).toBe("hello there");
+    });
+
+    it("throws with descriptive message when match is absent", () => {
+      expect(() => replaceOrThrow("hello world", "missing", "x")).toThrow(
+        /Template cache-bust failed: could not find "missing" in playground\.html/
+      );
+    });
   });
 
   describe("with state_graph_file", () => {

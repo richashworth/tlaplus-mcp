@@ -7,6 +7,16 @@ import { absolutePath } from "../lib/schemas.js";
 import { formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 import { generatePlaygroundDataJs, generatePlaygroundGenJs, generatePlaygroundCss, type PlaygroundGraph } from "../generators/playground-gen.js";
 
+export function replaceOrThrow(source: string, search: string, replacement: string): string {
+  if (!source.includes(search)) {
+    throw new Error(
+      `Template cache-bust failed: could not find ${JSON.stringify(search)} in playground.html. ` +
+      `The template may have been modified — update the replacement strings in playground-init.ts.`
+    );
+  }
+  return source.replace(search, replacement);
+}
+
 function deriveTitle(filePath: string): string {
   // Look for a "playground" directory component and use the parent name
   const parts = filePath.split("/");
@@ -49,10 +59,9 @@ export function registerPlaygroundInit(server: McpServer): void {
         // pick up fresh playground-data.js/playground-gen.js/css on every re-run.
         let html = await readFile(templatePath, "utf-8");
         const bust = "?v=" + Date.now();
-        html = html
-          .replace('href="playground-gen.css"', 'href="playground-gen.css' + bust + '"')
-          .replace('src="playground-data.js"', 'src="playground-data.js' + bust + '"')
-          .replace('src="playground-gen.js"', 'src="playground-gen.js' + bust + '"');
+        html = replaceOrThrow(html, 'href="playground-gen.css"', 'href="playground-gen.css' + bust + '"');
+        html = replaceOrThrow(html, 'src="playground-data.js"', 'src="playground-data.js' + bust + '"');
+        html = replaceOrThrow(html, 'src="playground-gen.js"', 'src="playground-gen.js' + bust + '"');
         await writeFile(htmlPath, html, "utf-8");
 
         // If state_graph_file provided, generate JS and CSS
