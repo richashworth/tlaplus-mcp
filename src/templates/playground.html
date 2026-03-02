@@ -865,8 +865,8 @@ body {
     </div>
 
     <div class="view-tabs" id="view-tabs">
-      <button class="view-tab active" data-tab="data" onclick="switchTab('data')">Data</button>
-      <button class="view-tab" data-tab="visual" onclick="switchTab('visual')" title="First-pass visual — ask Claude to refine layout, colors, or icons in your session">Visual</button>
+      <button class="view-tab" data-tab="data" onclick="switchTab('data')">Data</button>
+      <button class="view-tab active" data-tab="visual" onclick="switchTab('visual')" title="First-pass visual — ask Claude to refine layout, colors, or icons in your session">Visual</button>
     </div>
 
     <div class="actions-bar">
@@ -876,11 +876,11 @@ body {
       </div>
     </div>
 
-    <div id="prototype" class="view-panel active">
+    <div id="prototype" class="view-panel">
       <!-- renderState() output goes here (data dashboard) -->
     </div>
 
-    <div id="prototype-visual" class="view-panel">
+    <div id="prototype-visual" class="view-panel active">
       <!-- renderStateVisual() output goes here (domain diagram) -->
     </div>
   </div>
@@ -1121,7 +1121,7 @@ function checkInvariants() {
   });
 }
 
-var activeTab = 'data';
+var activeTab = 'visual';
 
 function switchTab(tab) {
   activeTab = tab;
