@@ -971,7 +971,7 @@ function dispatch(index) {
 // Rendering
 // =====================================================================
 
-function renderState(vars) {
+function renderStateDefault(vars) {
   var keys = Object.keys(vars);
   if (keys.length === 0) {
     return '<div class="rs-empty">No variables to display</div>';
@@ -1178,7 +1178,11 @@ function renderAll() {
 
   // Data view (always rendered — it's the reliable baseline)
   var protoEl = document.getElementById('prototype');
-  protoEl.innerHTML = state ? renderState(state.vars) : fallback;
+  protoEl.innerHTML = state
+    ? (typeof renderState === 'function'
+        ? renderState(state.vars)
+        : renderStateDefault(state.vars))
+    : fallback;
 
   // Visual view
   var visualEl = document.getElementById('prototype-visual');
