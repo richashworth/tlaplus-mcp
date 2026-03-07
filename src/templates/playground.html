@@ -193,8 +193,8 @@ body {
 /* ===== Action Buttons ===== */
 .actions-bar {
   flex-shrink: 0;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .actions-bar h3 {
@@ -210,8 +210,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 120px;
-  overflow-y: auto;
 }
 
 .action-btn {
@@ -869,19 +867,19 @@ body {
       <button class="view-tab active" data-tab="visual" onclick="switchTab('visual')" title="First-pass visual — ask Claude to refine layout, colors, or icons in your session">Visual</button>
     </div>
 
-    <div class="actions-bar">
-      <h3>Actions</h3>
-      <div class="actions-grid" id="actions-grid">
-        <!-- Action buttons generated dynamically -->
-      </div>
-    </div>
-
     <div id="prototype" class="view-panel">
       <!-- renderState() output goes here (data dashboard) -->
     </div>
 
     <div id="prototype-visual" class="view-panel active">
       <!-- renderStateVisual() output goes here (domain diagram) -->
+    </div>
+
+    <div class="actions-bar">
+      <h3>Actions</h3>
+      <div class="actions-grid" id="actions-grid">
+        <!-- Action buttons generated dynamically -->
+      </div>
     </div>
   </div>
 
