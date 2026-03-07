@@ -212,33 +212,35 @@ class ValueParser {
     this.expect("[");
     this.skipWs();
     if (this.match("]")) return {};
-    const result: Record<string, TlaValue> = {};
+    const entries: [string, TlaValue][] = [];
     while (true) {
       this.skipWs();
       const key = this.parseIdentifier();
       this.expect("|->");
       const val = this.parseValue();
-      result[key] = val;
+      entries.push([key, val]);
       if (!this.match(",")) break;
     }
     this.expect("]");
-    return result;
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return Object.fromEntries(entries);
   }
 
   private parseFunction(): Record<string, TlaValue> {
     this.expect("(");
-    const result: Record<string, TlaValue> = {};
+    const entries: [string, TlaValue][] = [];
     while (true) {
       this.skipWs();
       const key = this.parseValue();
       this.expect(":>");
       const val = this.parseValue();
-      result[jsonKey(key)] = val;
+      entries.push([jsonKey(key), val]);
       this.skipWs();
       if (!this.match("@@")) break;
     }
     this.expect(")");
-    return result;
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return Object.fromEntries(entries);
   }
 }
 
@@ -275,5 +277,9 @@ export function parseStateLabel(label: string): VarMap {
       }
     }
   }
-  return variables;
+  const sorted: VarMap = {};
+  for (const key of Object.keys(variables).sort()) {
+    sorted[key] = variables[key];
+  }
+  return sorted;
 }
