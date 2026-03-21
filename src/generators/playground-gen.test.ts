@@ -93,23 +93,18 @@ describe("generatePlaygroundDataJs", () => {
 describe("generatePlaygroundGenJs", () => {
   const genJs = generatePlaygroundGenJs({ graph: FIXTURE });
 
-  it("contains presentation globals and renderStateVisual stub", () => {
+  it("contains presentation globals without renderStateVisual", () => {
     expect(genJs).toContain("var ACTION_LABELS");
     expect(genJs).toContain("var INVARIANT_LABELS");
     expect(genJs).toContain("var SCENARIO_LABELS");
     expect(genJs).toContain("var HAPPY_PATHS");
     expect(genJs).not.toContain("function renderState(");
-    expect(genJs).toContain("function renderStateVisual");
+    expect(genJs).not.toContain("function renderStateVisual");
   });
 
   it("does not contain GRAPH or PLAYGROUND_TITLE", () => {
     expect(genJs).not.toContain("var GRAPH");
     expect(genJs).not.toContain("var PLAYGROUND_TITLE");
-  });
-
-  it("renderStateVisual stub contains rs-empty and not customized", () => {
-    expect(genJs).toContain("rs-empty");
-    expect(genJs).toContain("not customized");
   });
 
   it("generates SCENARIO_LABELS from violations correctly", () => {

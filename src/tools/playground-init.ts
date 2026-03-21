@@ -4,8 +4,8 @@ import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { absolutePath } from "../lib/schemas.js";
-import { formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
-import { generatePlaygroundDataJs, generatePlaygroundGenJs, generatePlaygroundCss, type PlaygroundGraph } from "../generators/playground-gen.js";
+import { formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import { generatePlaygroundDataJs, generatePlaygroundGenJs, generatePlaygroundCss, type PlaygroundGraph, type DomainLabels } from "../generators/playground-gen.js";
 
 export function replaceOrThrow(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -49,6 +49,10 @@ export function registerPlaygroundInit(server: McpServer): void {
       title: z.string().optional().describe(
         "Title for the playground (e.g., the system name). Falls back to path-based heuristic if not provided."
       ),
+      domain_labels: z.string().optional().describe(
+        "JSON string containing domain-language labels: { actionLabels, invariantLabels, scenarioLabels, happyPathLabels }. " +
+        "When provided, the generated playground-gen.js uses these instead of generic defaults."
+      ),
     },
     async (params) => {
       try {
@@ -66,23 +70,26 @@ export function registerPlaygroundInit(server: McpServer): void {
 
         // If state_graph_file provided, generate JS and CSS
         if (params.state_graph_file) {
-          validateFileExists(params.state_graph_file, "State graph file");
           const graphJson = await readFile(params.state_graph_file, "utf-8");
           const graph: PlaygroundGraph = JSON.parse(graphJson);
 
-          // Use provided title or fall back to path-based heuristic
           const title = params.title || deriveTitle(params.state_graph_file);
+          const domainLabels: DomainLabels | undefined = params.domain_labels
+            ? JSON.parse(params.domain_labels)
+            : undefined;
 
           const dataJsContent = generatePlaygroundDataJs({ title, graph });
-          const genJsContent = generatePlaygroundGenJs({ graph });
+          const genJsContent = generatePlaygroundGenJs({ graph, domainLabels });
           const cssContent = generatePlaygroundCss();
 
           const dataJsPath = join(params.target_dir, "playground-data.js");
           const genJsPath = join(params.target_dir, "playground-gen.js");
           const cssPath = join(params.target_dir, "playground-gen.css");
-          await writeFile(dataJsPath, dataJsContent, "utf-8");
-          await writeFile(genJsPath, genJsContent, "utf-8");
-          await writeFile(cssPath, cssContent, "utf-8");
+          await Promise.all([
+            writeFile(dataJsPath, dataJsContent, "utf-8"),
+            writeFile(genJsPath, genJsContent, "utf-8"),
+            writeFile(cssPath, cssContent, "utf-8"),
+          ]);
 
           return formatToolResponse({
             html_path: htmlPath,

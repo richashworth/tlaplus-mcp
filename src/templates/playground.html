@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>System Playground</title>
+<title>Verification Report</title>
 <style>
 /* ===== Reset ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,7 +11,6 @@
 /* ===== Theme ===== */
 :root {
   --bg: #f4f4f6;
-  --dot: rgba(0,0,0,0.035);
   --surface: #ffffff;
   --surface-hover: #f8f8fa;
   --surface-raised: #eeeef1;
@@ -36,14 +35,12 @@
   --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
   --radius: 8px;
   --radius-sm: 5px;
-  --pill: 100px;
   --fast: 100ms ease;
   --med: 150ms ease;
 }
 
 :root.dark {
   --bg: #0a0a0c;
-  --dot: rgba(255,255,255,0.04);
   --surface: #111114;
   --surface-hover: #19191d;
   --surface-raised: #1e1e23;
@@ -70,258 +67,114 @@ body {
   font-family: var(--font);
   color: var(--text-1);
   background: var(--bg);
-  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px);
-  background-size: 20px 20px;
   line-height: 1.5;
   font-size: 14px;
-  height: 100vh;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* ===== Layout ===== */
-.app { display: flex; height: 100vh; }
-
-.panel-left {
-  flex: 1 1 0%;
-  overflow-y: auto;
-  padding: 32px 40px;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
 }
 
-.panel-right {
-  flex: 0 0 340px;
-  max-width: 380px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Scrollbars */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
-
-/* ===== Prototype Header ===== */
-.prototype-header {
+/* ===== Header ===== */
+.header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--border);
 }
 
-.prototype-header h1 {
-  font-size: 17px;
+.header h1 {
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.025em;
 }
 
-.step-counter {
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--text-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 2px 10px;
-  border-radius: var(--pill);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.coverage-counter {
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--text-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 2px 10px;
-  border-radius: var(--pill);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ===== Scenario Progress Bar ===== */
-.scenario-progress {
-  height: 3px;
-  background: var(--surface-raised);
-  border-radius: 2px;
-  margin: 8px 0 4px;
-  overflow: hidden;
-  display: none;
-}
-.scenario-progress.visible { display: block; }
-.scenario-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 200ms ease;
-  width: 0%;
-}
-
-/* ===== Prototype Area ===== */
-#prototype { flex: 1; min-height: 0; }
-
-#prototype.transitioning {
-  animation: stateCrossfade 200ms ease;
-}
-
-@keyframes stateCrossfade {
-  0%   { opacity: 0.45; transform: translateY(2px); }
-  100% { opacity: 1;    transform: translateY(0); }
-}
-
-/* ===== Variable-Diff Highlighting ===== */
-[data-var].var-changed {
-  animation: varPulse 600ms ease;
-}
-
-@keyframes varPulse {
-  0%   { background-color: var(--accent-glow); outline: 2px solid var(--accent); outline-offset: 1px; }
-  100% { background-color: transparent; outline-color: transparent; }
-}
-
-
-/* ===== Action Buttons ===== */
-.actions-bar {
-  flex-shrink: 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.actions-bar h3 {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-3);
-  margin-bottom: 10px;
-}
-
-.actions-grid {
+.header-controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-height: 160px;
-  overflow-y: auto;
-  align-content: flex-start;
-}
-
-.action-btn {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 15px;
-  font-size: 13px;
-  font-family: var(--font);
-  font-weight: 500;
-  color: var(--text-2);
-  background: var(--surface);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--pill);
-  cursor: pointer;
-  transition: all 120ms ease;
-  position: relative;
-  user-select: none;
-  -webkit-user-select: none;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.action-btn:hover:not(:disabled) {
-  color: var(--text-1);
-  border-color: var(--accent);
-  background: var(--surface-hover);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.action-btn:active:not(:disabled) {
-  transform: scale(0.96);
-  transition-duration: 40ms;
-}
-
-.actions-empty {
+.header-link {
+  font-size: 11px;
   color: var(--text-3);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  transition: all 120ms ease;
+}
+.header-link:hover { color: var(--text-2); border-color: var(--border-mid); }
+
+/* ===== Theme Toggle ===== */
+.theme-toggle {
+  background: none; border: none; cursor: pointer; padding: 2px;
+  display: flex; align-items: center;
+}
+.toggle-track {
+  display: block; width: 36px; height: 20px;
+  background: var(--border-bright); border-radius: 100px;
+  position: relative; transition: background var(--med);
+}
+:root.dark .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; background: var(--surface);
+  border-radius: 50%; transition: transform var(--med);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+:root.dark .toggle-thumb { transform: translateX(16px); }
+
+/* ===== Stats Bar ===== */
+.stats-bar {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 28px;
   font-size: 13px;
-  padding: 4px 0;
+  color: var(--text-2);
+}
+.stats-bar strong { color: var(--text-1); font-weight: 600; }
+
+/* ===== Section ===== */
+.section {
+  margin-bottom: 32px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.action-btn { animation: fadeIn 150ms ease both; }
-
-/* ===== Sidebar Sections ===== */
-.sidebar-section {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.sidebar-section:last-child { border-bottom: none; }
-
-.sidebar-section h2 {
+.section-title {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-3);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 /* ===== Invariant Badges ===== */
 .invariants-list {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .invariant-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
+  gap: 6px;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
-  transition: all 250ms ease;
   border-left: 3px solid transparent;
-  position: relative;
 }
-
-.invariant-help {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px; height: 14px;
-  font-size: 10px; font-weight: 700;
-  border-radius: 50%;
-  border: 1px solid var(--border-mid);
-  color: var(--text-3);
-  margin-left: 4px; flex-shrink: 0;
-  cursor: help;
-}
-
-.invariant-tooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px); left: 10px;
-  background: var(--text-1); color: var(--bg);
-  font-size: 11px; font-weight: 400;
-  padding: 4px 10px; border-radius: 4px;
-  white-space: normal; max-width: 240px;
-  z-index: 10; pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.invariant-badge:hover .invariant-tooltip { display: block; }
 
 .invariant-badge.pass {
   background: var(--green-bg);
@@ -333,1119 +186,389 @@ body {
   background: var(--red-bg);
   border-left-color: var(--red);
   color: var(--red);
-  box-shadow: 0 0 20px var(--red-glow);
-  animation: shake 0.45s cubic-bezier(.36,.07,.19,.97);
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  15% { transform: translateX(-5px); }
-  35% { transform: translateX(4px); }
-  55% { transform: translateX(-3px); }
-  75% { transform: translateX(2px); }
 }
 
 .invariant-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; line-height: 1;
 }
-
 .invariant-badge.pass .invariant-icon { background: var(--green); color: #000; }
 .invariant-badge.fail .invariant-icon { background: var(--red); color: #fff; }
 
-/* ===== Trace Log ===== */
-.trace-log {
-  max-height: 300px;
-  overflow-y: auto;
-  font-family: var(--mono);
+.invariant-desc {
   font-size: 12px;
-  line-height: 1.65;
-}
-
-.trace-entry {
-  display: flex;
-  gap: 8px;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  transition: background var(--fast);
-}
-
-.trace-entry { cursor: pointer; }
-.trace-entry:hover { background: var(--surface-hover); }
-.trace-entry.current { background: var(--accent-glow); border-radius: var(--radius-sm); }
-
-.trace-step {
-  flex-shrink: 0;
-  color: var(--text-3);
-  min-width: 26px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.trace-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 7px;
-}
-
-.trace-action {
-  color: var(--text-1);
-  font-family: var(--font);
-  font-weight: 500;
-}
-
-.trace-empty {
-  color: var(--text-3);
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 12px 0;
-}
-
-/* ===== Scenarios ===== */
-.scenario-select {
-  width: 100%;
-  padding: 7px 10px;
-  font-size: 13px;
-  font-family: var(--font);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text-1);
-  cursor: pointer;
-  margin-bottom: 8px;
-}
-
-.scenario-description {
-  display: none;
-  font-size: 12px; line-height: 1.5;
-  color: var(--text-2); margin-bottom: 8px;
-  background: var(--surface-hover);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.scenario-description.visible { display: block; }
-
-.scenario-desc-row {
-  padding: 6px 10px; display: flex; gap: 6px;
-}
-.scenario-desc-row + .scenario-desc-row {
-  border-top: 1px solid var(--border);
-}
-.scenario-desc-label {
-  flex-shrink: 0; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--text-3); min-width: 52px; padding-top: 1px;
-}
-.scenario-desc-value { color: var(--text-1); }
-.scenario-desc-value.rule-broken { color: var(--red); font-weight: 600; }
-
-.scenario-controls {
-  display: flex;
-  gap: 6px;
-}
-
-.scenario-btn {
-  flex: 1;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-family: var(--font);
-  font-weight: 600;
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
   color: var(--text-2);
-  cursor: pointer;
-  transition: all 120ms ease;
+  font-weight: 400;
+  margin-left: 4px;
 }
 
-.scenario-btn:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: var(--border-bright);
-}
-
-.scenario-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.scenario-btn.primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.scenario-btn.primary:hover:not(:disabled) { filter: brightness(1.12); }
-
-/* ===== Reset ===== */
-.reset-bar {
-  padding: 12px 20px;
-  border-top: 1px solid var(--border);
-  margin-top: auto;
-}
-
-.reset-btn {
-  width: 100%;
-  padding: 7px;
-  font-size: 12px;
-  font-family: var(--font);
-  font-weight: 500;
-  color: var(--text-3);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 120ms ease;
-}
-
-.reset-btn:hover {
-  color: var(--text-2);
-  border-color: var(--border-mid);
-  background: var(--surface-hover);
-}
-
-/* ===== Theme Toggle ===== */
-.theme-toggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-}
-
-.toggle-track {
-  display: block;
-  width: 40px;
-  height: 22px;
-  background: var(--border-bright);
-  border-radius: 100px;
-  position: relative;
-  transition: background var(--med);
-}
-
-:root.dark .toggle-track {
-  background: var(--accent);
-}
-
-.toggle-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  background: var(--surface);
-  border-radius: 50%;
-  transition: transform var(--med);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-
-:root.dark .toggle-thumb {
-  transform: translateX(18px);
-}
-
-/* ===== Toast ===== */
-.toast {
-  position: fixed;
-  bottom: -60px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text-1);
-  color: var(--bg);
-  padding: 8px 20px;
-  border-radius: var(--pill);
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-  transition: bottom 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 100;
-  white-space: nowrap;
-}
-
-.toast.show { bottom: 28px; }
-
-/* ===== Responsive ===== */
-@media (max-width: 800px) {
-  .app { flex-direction: column; }
-  .panel-left { flex: none; height: 55vh; padding: 20px 24px; }
-  .panel-right {
-    flex: none;
-    height: 45vh;
-    max-width: none;
-    border-left: none;
-    border-top: 1px solid var(--border);
-  }
-}
-
-/* ===== Utility Classes for renderState ===== */
-
-/* --- Cards --- */
-.rs-card {
+/* ===== Trace Card ===== */
+.trace-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
-  transition: border-color var(--med), box-shadow var(--med);
+  margin-bottom: 16px;
+  overflow: hidden;
 }
-.rs-card:last-child { margin-bottom: 0; }
-.rs-card-header {
+
+.trace-card-header {
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background var(--fast);
+}
+.trace-card-header:hover { background: var(--surface-hover); }
+
+.trace-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
-.rs-card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-1);
-  letter-spacing: -0.01em;
-}
 
-/* --- Grid layouts --- */
-.rs-grid { display: grid; gap: 10px; }
-.rs-grid-2 { grid-template-columns: 1fr 1fr; }
-.rs-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-.rs-grid-4 { grid-template-columns: repeat(4, 1fr); }
-
-/* --- Status badges --- */
-.rs-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: var(--pill);
-  letter-spacing: 0.02em;
-}
-.rs-badge-ok     { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
-.rs-badge-error  { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border); }
-.rs-badge-warn   { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(176,120,0,0.18); }
-.rs-badge-info   { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(59,95,212,0.18); }
-.rs-badge-muted  { background: var(--surface-raised); color: var(--text-2); border: 1px solid var(--border); }
-
-/* --- Tables --- */
-.rs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.rs-table th {
-  text-align: left;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-3);
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border-mid);
-}
-.rs-table td {
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-1);
-  vertical-align: middle;
-}
-.rs-table tr:last-child td { border-bottom: none; }
-.rs-table tr:hover td { background: var(--surface-hover); }
-
-/* --- Meters/Progress --- */
-.rs-meter {
-  height: 6px;
-  background: var(--surface-raised);
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}
-.rs-meter-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
-  transition: width 300ms ease;
-}
-.rs-meter-fill.green  { background: var(--green); }
-.rs-meter-fill.red    { background: var(--red); }
-.rs-meter-fill.amber  { background: var(--amber); }
-
-/* --- Key/Value pairs --- */
-.rs-kv {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 4px 0;
-  font-size: 13px;
-}
-.rs-kv + .rs-kv { border-top: 1px solid var(--border); }
-.rs-kv-key {
-  color: var(--text-2);
-  font-weight: 500;
-}
-.rs-kv-val {
-  color: var(--text-1);
-  font-weight: 600;
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
-/* --- Entity rows (for actors/processes) --- */
-.rs-entity {
+.trace-card-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  transition: background var(--fast);
-}
-.rs-entity + .rs-entity { border-top: 1px solid var(--border); }
-.rs-entity-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--surface-raised);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  flex-shrink: 0;
-}
-.rs-entity-body { flex: 1; min-width: 0; }
-.rs-entity-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-1);
-}
-.rs-entity-detail {
-  font-size: 12px;
-  color: var(--text-2);
 }
 
-/* --- Sequence / pipeline --- */
-.rs-pipeline {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  overflow-x: auto;
-}
-.rs-pipeline-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 14px;
+.trace-card-meta {
   font-size: 12px;
-  font-weight: 500;
-  color: var(--text-2);
-  position: relative;
-  white-space: nowrap;
+  color: var(--text-3);
+  font-family: var(--mono);
 }
-.rs-pipeline-step.active {
-  color: var(--accent);
+
+.trace-card-badge {
+  font-size: 10px;
   font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.03em;
 }
-.rs-pipeline-step.done {
+.trace-card-badge.bug {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-border);
+}
+.trace-card-badge.ok {
+  background: var(--green-bg);
   color: var(--green);
+  border: 1px solid var(--green-border);
 }
-.rs-pipeline-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-mid);
-  border: 2px solid var(--surface);
-  box-shadow: 0 0 0 1px var(--border-mid);
+
+.trace-card-desc {
+  padding: 0 18px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
 }
-.rs-pipeline-step.active .rs-pipeline-dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 6px var(--accent-glow);
+.trace-card-rule {
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 600;
+  margin-bottom: 4px;
 }
-.rs-pipeline-step.done .rs-pipeline-dot {
-  background: var(--green);
-  box-shadow: 0 0 0 1px var(--green);
+
+.trace-card-body {
+  border-top: 1px solid var(--border);
+  display: none;
 }
-.rs-pipeline-arrow {
+.trace-card.open .trace-card-body { display: block; }
+
+.trace-card-toggle {
+  font-size: 12px;
+  color: var(--text-3);
+  transition: transform var(--med);
+}
+.trace-card.open .trace-card-toggle { transform: rotate(90deg); }
+
+/* ===== Trace Steps ===== */
+.trace-step {
+  display: flex;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.trace-step:last-child { border-bottom: none; }
+
+.trace-step-num {
   flex-shrink: 0;
   width: 24px;
-  height: 2px;
-  background: var(--border-mid);
-}
-
-/* --- Section heading inside renderState --- */
-.rs-heading {
+  font-family: var(--mono);
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--text-3);
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  text-align: right;
+  padding-top: 1px;
 }
 
-/* --- Empty / placeholder state --- */
-.rs-empty {
-  text-align: center;
-  padding: 32px;
-  color: var(--text-3);
-  font-size: 13px;
-}
+.trace-step-content { flex: 1; min-width: 0; }
 
-/* ===== View Tabs ===== */
-.view-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 16px;
-  background: var(--surface-raised);
-  border-radius: var(--radius);
-  padding: 3px;
-}
-
-.view-tab {
-  flex: 1;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-family: var(--font);
+.trace-step-action {
   font-weight: 600;
-  color: var(--text-3);
-  background: transparent;
-  border: none;
-  border-radius: calc(var(--radius) - 2px);
-  cursor: pointer;
-  transition: all var(--fast);
-  text-align: center;
-}
-
-.view-tab:hover { color: var(--text-2); }
-
-.view-tab.active {
   color: var(--text-1);
-  background: var(--surface);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: 4px;
 }
 
-.view-panel { display: none; flex: 1; min-height: 0; overflow-y: auto; }
-.view-panel.active { display: block; }
+.trace-step-vars {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
 
+.trace-var-name {
+  color: var(--text-3);
+  white-space: nowrap;
+}
 
+.trace-var-value {
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.trace-var-changed .trace-var-name { color: var(--accent); }
+.trace-var-changed .trace-var-value { color: var(--accent); font-weight: 600; }
+
+/* ===== Empty State ===== */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* ===== Scrollbars ===== */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
 </style>
 <link rel="stylesheet" href="playground-gen.css">
 </head>
 <body>
 
-<div class="app">
-  <!-- Left Panel: Domain Prototype -->
-  <div class="panel-left">
-    <div class="prototype-header">
-      <h1 id="page-title">System Playground</h1>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="coverage-counter" id="coverage-counter" title="Unique states visited / total states in graph">0 / 0 states</span>
-        <span class="step-counter" id="step-counter">Step 0</span>
-        <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light theme" aria-label="Toggle theme">
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
-          </span>
-        </button>
-      </div>
-    </div>
-
-    <div class="view-tabs" id="view-tabs">
-      <button class="view-tab" data-tab="data" onclick="switchTab('data')">Data</button>
-      <button class="view-tab active" data-tab="visual" onclick="switchTab('visual')" title="First-pass visual — ask Claude to refine layout, colors, or icons in your session">Visual</button>
-    </div>
-
-    <div id="prototype" class="view-panel">
-      <!-- renderState() output goes here (data dashboard) -->
-    </div>
-
-    <div id="prototype-visual" class="view-panel active">
-      <!-- renderStateVisual() output goes here (domain diagram) -->
-    </div>
-
-    <div class="actions-bar">
-      <h3>Actions</h3>
-      <div class="actions-grid" id="actions-grid">
-        <!-- Action buttons generated dynamically -->
-      </div>
+<div class="container">
+  <div class="header">
+    <h1 id="page-title">Verification Report</h1>
+    <div class="header-controls">
+      <a href="https://will62794.github.io/spectacle/" target="_blank" rel="noopener" class="header-link" title="Open Spectacle for interactive state-space exploration">Explore in Spectacle</a>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light theme" aria-label="Toggle theme">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </button>
     </div>
   </div>
 
-  <!-- Right Panel: Verification Sidebar -->
-  <div class="panel-right">
-    <!-- Invariants -->
-    <div class="sidebar-section">
-      <h2>Invariants</h2>
-      <div class="invariants-list" id="invariants-list">
-        <!-- Invariant badges generated dynamically -->
-      </div>
-    </div>
+  <div class="stats-bar" id="stats-bar"></div>
 
-    <!-- Trace Log -->
-    <div class="sidebar-section" style="flex:1;min-height:0;display:flex;flex-direction:column;">
-      <h2>Trace</h2>
-      <div class="trace-log" id="trace-log">
-        <div class="trace-empty">No actions taken yet. Click an action to begin.</div>
-      </div>
-    </div>
+  <div class="section">
+    <div class="section-title">Invariants</div>
+    <div class="invariants-list" id="invariants-list"></div>
+  </div>
 
-    <!-- Scenarios -->
-    <div class="sidebar-section" id="scenarios-section" style="display:none;">
-      <h2>Scenarios</h2>
-      <select class="scenario-select" id="scenario-select">
-        <option value="">Choose a scenario...</option>
-      </select>
-      <div class="scenario-description" id="scenario-description"></div>
-      <div class="scenario-progress" id="scenario-progress"><div class="scenario-progress-fill" id="scenario-progress-fill"></div></div>
-      <div class="scenario-controls">
-        <button class="scenario-btn" id="scenario-reset" disabled>Reset</button>
-        <button class="scenario-btn primary" id="scenario-step" disabled>Next Step</button>
-        <button class="scenario-btn" id="scenario-play-all" disabled>Play All</button>
-      </div>
-    </div>
+  <div class="section" id="violations-section" style="display:none">
+    <div class="section-title">Violations</div>
+    <div id="violations-list"></div>
+  </div>
 
-    <!-- Reset -->
-    <div class="reset-bar">
-      <button class="reset-btn" onclick="resetPlayground()">Reset to initial state</button>
-    </div>
+  <div class="section" id="happy-section" style="display:none">
+    <div class="section-title">Successful Scenarios</div>
+    <div id="happy-list"></div>
   </div>
 </div>
 
-<!-- Toast Notification -->
-<div class="toast" id="toast"></div>
-
-<!-- Generated data — loaded from sibling files, never inline in the template -->
+<!-- Generated data — loaded from sibling files -->
 <script src="playground-data.js"></script>
 <script src="playground-gen.js"></script>
 
 <script>
 // =====================================================================
-// State Engine (graph-walking)
+// Utilities
 // =====================================================================
 
-let currentStateId = GRAPH.initialStateId;
-let previousVars = null;
-let visitedStates = {};
-let traceLog = [];
-let scenarioIndex = -1;
-let activeScenario = null;
-let pendingTimeouts = [];
-
-// Count total states in graph
-var totalStates = Object.keys(GRAPH.states).length;
-
-function getState(id) {
-  return GRAPH.states[id || currentStateId];
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function getAvailableActions() {
-  return (GRAPH.transitions[currentStateId] || []).map(function(edge, i) {
-    return {
-      index: i,
-      action: edge.action,
-      label: ACTION_LABELS[edge.label] || edge.label,
-      technicalLabel: edge.label,
-      target: edge.target
-    };
-  });
-}
-
-function dispatch(index) {
-  var edges = GRAPH.transitions[currentStateId] || [];
-  var edge = edges[index];
-  if (!edge) return;
-  traceLog.push({
-    step: traceLog.length + 1,
-    action: ACTION_LABELS[edge.label] || edge.label,
-    fromId: currentStateId,
-    toId: edge.target
-  });
-  currentStateId = edge.target;
-  renderAll();
-}
-
-// =====================================================================
-// Rendering
-// =====================================================================
-
-function renderStateDefault(vars) {
-  var keys = Object.keys(vars);
-  if (keys.length === 0) {
-    return '<div class="rs-empty">No variables to display</div>';
+function formatValue(val) {
+  if (val === null || val === undefined) return String(val);
+  if (typeof val === 'string') return JSON.stringify(val);
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) {
+    return '<<' + val.map(formatValue).join(', ') + '>>';
   }
+  if (typeof val === 'object') {
+    var entries = Object.entries(val);
+    if (entries.length === 0) return '[  ]';
+    return '[' + entries.map(function(e) {
+      return e[0] + ' |-> ' + formatValue(e[1]);
+    }).join(', ') + ']';
+  }
+  return String(val);
+}
+
+function resolveAction(action) {
+  if (!action) return 'Initial state';
+  return (typeof ACTION_LABELS !== 'undefined' && ACTION_LABELS[action]) || action;
+}
+
+function toggleTrace(card) {
+  card.classList.toggle('open');
+}
+
+// =====================================================================
+// Render
+// =====================================================================
+
+function renderStatsBar() {
+  var total = Object.keys(GRAPH.states).length;
+  var vCount = (GRAPH.violations || []).length;
+  var status = vCount === 0
+    ? '<strong style="color:var(--green)">Clean</strong>'
+    : '<strong style="color:var(--red)">' + vCount + ' violation' + (vCount > 1 ? 's' : '') + '</strong>';
+  document.getElementById('stats-bar').innerHTML =
+    '<span>' + status + '</span>' +
+    '<span><strong>' + total + '</strong> distinct states</span>' +
+    (GRAPH.partial ? '<span style="color:var(--amber)">Partial graph (traces only)</span>' : '');
+}
+
+function renderInvariants() {
+  var el = document.getElementById('invariants-list');
+  var names = GRAPH.invariants || [];
+  var violated = {};
+  (GRAPH.violations || []).forEach(function(v) {
+    if (v.invariant) violated[v.invariant] = true;
+    if (v.property) violated[v.property] = true;
+  });
+  var hasDeadlock = (GRAPH.violations || []).some(function(v) { return v.type === 'deadlock'; });
+
+  if (names.length === 0 && !hasDeadlock) {
+    el.innerHTML = '<span class="empty-state" style="padding:8px">No invariants defined.</span>';
+    return;
+  }
+
   var html = '';
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    html += '<div class="rs-card" data-var="' + escapeHtml(k) + '">';
-    html += '<div class="rs-card-header"><span class="rs-card-title">' + escapeHtml(k) + '</span></div>';
-    html += renderValue(vars[k]);
-    html += '</div>';
+  names.forEach(function(name) {
+    var fail = violated[name] || false;
+    var label = (typeof INVARIANT_LABELS !== 'undefined' && INVARIANT_LABELS[name]) || name;
+    var desc = label !== name ? '<span class="invariant-desc">' + escapeHtml(label) + '</span>' : '';
+    html += '<div class="invariant-badge ' + (fail ? 'fail' : 'pass') + '">' +
+      '<span class="invariant-icon">' + (fail ? '&#10007;' : '&#10003;') + '</span>' +
+      '<span>' + escapeHtml(name) + '</span>' + desc + '</div>';
+  });
+  if (hasDeadlock) {
+    html += '<div class="invariant-badge fail">' +
+      '<span class="invariant-icon">&#10007;</span>' +
+      '<span>Deadlock</span></div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderTraceSteps(trace) {
+  var html = '';
+  var prevVars = null;
+  for (var i = 0; i < trace.length; i++) {
+    var entry = trace[i];
+    var vars = entry.stateId && GRAPH.states[entry.stateId]
+      ? GRAPH.states[entry.stateId].vars
+      : {};
+    var action = resolveAction(entry.action);
+
+    html += '<div class="trace-step">';
+    html += '<div class="trace-step-num">' + (i + 1) + '</div>';
+    html += '<div class="trace-step-content">';
+    html += '<div class="trace-step-action">' + escapeHtml(action) + '</div>';
+
+    if (vars && Object.keys(vars).length > 0) {
+      html += '<div class="trace-step-vars">';
+      Object.keys(vars).forEach(function(k) {
+        var val = formatValue(vars[k]);
+        var prevVal = prevVars ? formatValue(prevVars[k]) : val;
+        var cls = prevVars && prevVal !== val ? ' trace-var-changed' : '';
+        html += '<span class="trace-var-name' + cls + '">' + escapeHtml(k) + '</span>';
+        html += '<span class="trace-var-value' + cls + '">' + escapeHtml(val) + '</span>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    prevVars = vars;
   }
   return html;
 }
 
-function renderValue(val) {
-  if (typeof val === 'boolean') {
-    return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'
-      + (val ? 'var(--green)' : 'var(--text-3)') + '"></span> ' + val;
+function renderTraceCard(id, badgeClass, badgeText, title, stepCount, trace, desc, ruleLabel) {
+  var html = '<div class="trace-card" id="' + id + '">';
+  html += '<div class="trace-card-header" onclick="toggleTrace(this.parentNode)">';
+  html += '<div class="trace-card-title">';
+  html += '<span class="trace-card-badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span> ';
+  html += escapeHtml(title);
+  html += '</div>';
+  html += '<div class="trace-card-actions">';
+  html += '<span class="trace-card-meta">' + stepCount + ' steps</span>';
+  html += '<span class="trace-card-toggle">&#9654;</span>';
+  html += '</div></div>';
+  if (desc || ruleLabel) {
+    html += '<div class="trace-card-desc">';
+    if (ruleLabel) html += '<div class="trace-card-rule">Rule broken: ' + escapeHtml(ruleLabel) + '</div>';
+    if (desc) html += escapeHtml(desc);
+    html += '</div>';
   }
-  if (typeof val === 'number') {
-    return '<div class="rs-kv"><span class="rs-kv-key">value</span><span class="rs-kv-val">' + val + '</span></div>';
-  }
-  if (typeof val === 'string') {
-    return '<span class="rs-badge rs-badge-info">' + escapeHtml(val) + '</span>';
-  }
-  if (Array.isArray(val)) {
-    if (val.length > 0 && val.every(function(x) { return typeof x === 'string'; })) {
-      var h = '';
-      for (var i = 0; i < val.length; i++) {
-        h += '<span class="rs-badge rs-badge-muted">' + escapeHtml(val[i]) + '</span> ';
-      }
-      return h;
-    }
-    var h2 = '<div class="rs-pipeline">';
-    for (var j = 0; j < val.length; j++) {
-      if (j > 0) h2 += '<div class="rs-pipeline-arrow"></div>';
-      h2 += '<div class="rs-pipeline-step"><div class="rs-pipeline-dot"></div>' + escapeHtml(JSON.stringify(val[j])) + '</div>';
-    }
-    h2 += '</div>';
-    return h2;
-  }
-  if (val !== null && typeof val === 'object') {
-    var okeys = Object.keys(val);
-    var allPrimitive = okeys.length > 0 && okeys.every(function(k) {
-      var v = val[k];
-      return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
-    });
-    if (allPrimitive) {
-      var t = '<table class="rs-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>';
-      for (var ti = 0; ti < okeys.length; ti++) {
-        t += '<tr><td>' + escapeHtml(okeys[ti]) + '</td><td>' + escapeHtml(String(val[okeys[ti]])) + '</td></tr>';
-      }
-      t += '</tbody></table>';
-      return t;
-    }
-    var nested = '';
-    for (var ni = 0; ni < okeys.length; ni++) {
-      nested += '<div class="rs-card"><div class="rs-card-header"><span class="rs-card-title">' + escapeHtml(okeys[ni]) + '</span></div>';
-      nested += renderValue(val[okeys[ni]]);
-      nested += '</div>';
-    }
-    return nested;
-  }
-  return '<pre>' + escapeHtml(JSON.stringify(val, null, 2)) + '</pre>';
+  html += '<div class="trace-card-body">';
+  html += trace ? renderTraceSteps(trace) : '<div class="empty-state">No trace available.</div>';
+  html += '</div></div>';
+  return html;
 }
 
-function renderActions() {
-  var grid = document.getElementById('actions-grid');
-  grid.innerHTML = '';
-  var actions = getAvailableActions();
+function renderViolations() {
+  var violations = GRAPH.violations || [];
+  if (violations.length === 0) return;
 
-  if (actions.length === 0) {
-    grid.innerHTML = '<div class="actions-empty">No actions available in this state — the system is stuck.</div>';
-    return;
-  }
+  document.getElementById('violations-section').style.display = '';
+  var container = document.getElementById('violations-list');
+  var html = '';
 
-  actions.forEach(function(a) {
-    var btn = document.createElement('button');
-    btn.className = 'action-btn';
-    btn.textContent = a.label;
-    if (a.action) btn.title = a.action;
-    btn.onclick = function() { dispatch(a.index); };
-    grid.appendChild(btn);
-  });
-}
-
-function renderTrace() {
-  var el = document.getElementById('trace-log');
-  if (traceLog.length === 0) {
-    el.innerHTML = '<div class="trace-empty">No actions taken yet. Click an action to begin.</div>';
-    return;
-  }
-  el.innerHTML = traceLog.map(function(entry, idx) {
-    var isCurrent = (idx === traceLog.length - 1) && (entry.toId === currentStateId);
-    return '<div class="trace-entry' + (isCurrent ? ' current' : '') + '" data-trace-idx="' + idx + '" title="Click to jump to this state">' +
-      '<span class="trace-step">' + entry.step + '.</span>' +
-      '<span class="trace-dot"></span>' +
-      '<span class="trace-action">' + escapeHtml(entry.action) + '</span>' +
-      '</div>';
-  }).join('');
-
-  // Attach click handlers for trace navigation
-  el.querySelectorAll('.trace-entry[data-trace-idx]').forEach(function(row) {
-    row.addEventListener('click', function() {
-      var idx = parseInt(row.getAttribute('data-trace-idx'));
-      var entry = traceLog[idx];
-      if (entry && entry.toId) {
-        currentStateId = entry.toId;
-        traceLog = traceLog.slice(0, idx + 1);
-        renderAll();
-      }
-    });
+  violations.forEach(function(v, idx) {
+    var sl = (typeof SCENARIO_LABELS !== 'undefined') ? SCENARIO_LABELS[v.id] : null;
+    var title = (sl && sl.title) ? sl.title : (v.invariant || v.property || 'Deadlock');
+    var desc = (sl && sl.description) ? sl.description : (v.summary || '');
+    var rule = v.invariant || v.property || null;
+    var ruleLabel = rule && (typeof INVARIANT_LABELS !== 'undefined') ? (INVARIANT_LABELS[rule] || rule) : rule;
+    html += renderTraceCard('violation-' + idx, 'bug', v.id, title,
+      v.trace ? v.trace.length : 0, v.trace, desc, ruleLabel);
   });
 
-  el.scrollTop = el.scrollHeight;
+  container.innerHTML = html;
+  var first = document.getElementById('violation-0');
+  if (first) first.classList.add('open');
 }
 
-function checkInvariants() {
-  var listEl = document.getElementById('invariants-list');
-  listEl.innerHTML = '';
+function renderHappyPaths() {
+  var paths = (typeof HAPPY_PATHS !== 'undefined') ? HAPPY_PATHS : [];
+  if (paths.length === 0) return;
 
-  var invariantNames = GRAPH.invariants || [];
-  if (invariantNames.length === 0 && !(GRAPH.violations || []).some(function(v) { return v.type === 'deadlock'; })) {
-    listEl.innerHTML = '<div class="actions-empty">No invariants defined.</div>';
-    return;
-  }
+  document.getElementById('happy-section').style.display = '';
+  var container = document.getElementById('happy-list');
+  var html = '';
 
-  invariantNames.forEach(function(name) {
-    // Check if current state violates this invariant/property
-    var violated = false;
-    (GRAPH.violations || []).forEach(function(v) {
-      if (!(v.invariant === name || v.property === name) || !v.trace || v.trace.length === 0) return;
-      if (v.type === 'temporal') {
-        // Liveness: violated across the entire loop portion of the trace.
-        // Find the "Back to state" entry — everything from that target onward is the loop.
-        var loopBackIdx = -1;
-        for (var ti = 0; ti < v.trace.length; ti++) {
-          if (v.trace[ti].action === 'Back to state') {
-            // Find the first trace entry with this stateId — that's the loop start
-            for (var li = 0; li < ti; li++) {
-              if (v.trace[li].stateId === v.trace[ti].stateId) { loopBackIdx = li; break; }
-            }
-            break;
-          }
-        }
-        if (loopBackIdx >= 0) {
-          // Red for any state in the loop
-          for (var si = loopBackIdx; si < v.trace.length; si++) {
-            if (v.trace[si].stateId === currentStateId) { violated = true; break; }
-          }
-        } else {
-          // No loop detected — fall back to last state
-          if (v.trace[v.trace.length - 1].stateId === currentStateId) violated = true;
-        }
-      } else {
-        // Safety: violated at the final state of the trace
-        if (v.trace[v.trace.length - 1].stateId === currentStateId) violated = true;
-      }
-    });
-
-    var badge = document.createElement('div');
-    badge.className = 'invariant-badge ' + (violated ? 'fail' : 'pass');
-    var displayName = name;
-    var tooltip = INVARIANT_LABELS[name];
-    badge.innerHTML =
-      '<span class="invariant-icon">' + (violated ? '&#10007;' : '&#10003;') + '</span>' +
-      '<span>' + escapeHtml(displayName) + '</span>' +
-      (tooltip
-        ? '<span class="invariant-help">?</span>' +
-          '<span class="invariant-tooltip">' + escapeHtml(tooltip) + '</span>'
-        : '');
-    listEl.appendChild(badge);
+  paths.forEach(function(hp, idx) {
+    var title = hp.title || ('Path ' + (idx + 1));
+    html += renderTraceCard('happy-' + idx, 'ok', 'OK', title,
+      hp.trace ? hp.trace.length : 0, hp.trace, null, null);
   });
 
-  // Show deadlock violations separately
-  (GRAPH.violations || []).forEach(function(v) {
-    if (v.type === 'deadlock' && v.trace && v.trace.length > 0 &&
-        v.trace[v.trace.length - 1].stateId === currentStateId) {
-      var badge = document.createElement('div');
-      badge.className = 'invariant-badge fail';
-      badge.innerHTML =
-        '<span class="invariant-icon">&#10007;</span>' +
-        '<span>Deadlock</span>';
-      listEl.appendChild(badge);
-    }
-  });
-}
-
-var activeTab = 'visual';
-
-function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll('.view-tab').forEach(function(btn) {
-    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
-  });
-  document.getElementById('prototype').classList.toggle('active', tab === 'data');
-  document.getElementById('prototype-visual').classList.toggle('active', tab === 'visual');
-}
-
-function renderAll() {
-  var state = getState();
-  var fallback = '<p style="color:var(--text-3);text-align:center;padding:40px;">State not found in graph.</p>';
-
-  // Data view (always rendered — it's the reliable baseline)
-  var protoEl = document.getElementById('prototype');
-  protoEl.innerHTML = state
-    ? (typeof renderState === 'function'
-        ? renderState(state.vars)
-        : renderStateDefault(state.vars))
-    : fallback;
-
-  // Visual view
-  var visualEl = document.getElementById('prototype-visual');
-  visualEl.innerHTML = state
-    ? (typeof renderStateVisual === 'function'
-        ? renderStateVisual(state.vars)
-        : '<p style="color:var(--text-3);padding:1rem">Visual view not available.</p>')
-    : fallback;
-
-  // Crossfade animation on the active panel
-  var activeEl = activeTab === 'visual' ? visualEl : protoEl;
-  activeEl.classList.remove('transitioning');
-  void activeEl.offsetWidth;
-  activeEl.classList.add('transitioning');
-
-  // Variable-diff highlighting on data view
-  if (state && previousVars) {
-    var changedVars = diffVars(previousVars, state.vars);
-    changedVars.forEach(function(varName) {
-      var els = protoEl.querySelectorAll('[data-var="' + varName + '"]');
-      els.forEach(function(el) {
-        el.classList.remove('var-changed');
-        void el.offsetWidth;
-        el.classList.add('var-changed');
-      });
-    });
-  }
-  if (state) previousVars = JSON.parse(JSON.stringify(state.vars));
-
-  // Track visited states
-  if (currentStateId) visitedStates[currentStateId] = true;
-  var visitedCount = Object.keys(visitedStates).length;
-  var statesLabel = GRAPH.partial ? 'traced states' : 'states';
-  document.getElementById('coverage-counter').textContent = visitedCount + ' / ' + totalStates + ' ' + statesLabel;
-
-  document.getElementById('step-counter').textContent = 'Step ' + traceLog.length;
-  renderActions();
-  renderTrace();
-  checkInvariants();
-  updateScenarioProgress();
-}
-
-// Deep-compare previous and current vars, return list of changed variable names
-function diffVars(prev, curr) {
-  var changed = [];
-  var allKeys = {};
-  Object.keys(prev).forEach(function(k) { allKeys[k] = true; });
-  Object.keys(curr).forEach(function(k) { allKeys[k] = true; });
-  Object.keys(allKeys).forEach(function(k) {
-    if (JSON.stringify(prev[k]) !== JSON.stringify(curr[k])) {
-      changed.push(k);
-    }
-  });
-  return changed;
-}
-
-// Update scenario progress bar
-function updateScenarioProgress() {
-  var bar = document.getElementById('scenario-progress');
-  var fill = document.getElementById('scenario-progress-fill');
-  if (activeScenario && activeScenario.trace) {
-    bar.classList.add('visible');
-    var pct = Math.round(((scenarioIndex + 1) / activeScenario.trace.length) * 100);
-    fill.style.width = pct + '%';
-  } else {
-    bar.classList.remove('visible');
-    fill.style.width = '0%';
-  }
-}
-
-function resetPlayground() {
-  pendingTimeouts.forEach(function(id) { clearTimeout(id); });
-  pendingTimeouts = [];
-  currentStateId = GRAPH.initialStateId;
-  previousVars = null;
-  visitedStates = {};
-  traceLog = [];
-  activeScenario = null;
-  scenarioIndex = -1;
-  updateScenarioControls();
-  renderAll();
+  container.innerHTML = html;
 }
 
 // =====================================================================
-// Scenarios (auto-populated from happy paths + violation traces)
-// =====================================================================
-
-function initScenarios() {
-  var scenarios = [];
-
-  // Build scenarios from happy paths
-  (HAPPY_PATHS || []).forEach(function(hp) {
-    if (!hp.trace || hp.trace.length === 0) return;
-    scenarios.push({
-      name: hp.title ? ('\u2705 ' + hp.title) : 'Happy path',
-      description: hp.description || '',
-      rule: null,
-      type: 'happy',
-      traceLen: hp.trace.length,
-      trace: hp.trace
-    });
-  });
-
-  // Build scenarios from violation traces
-  var bugNum = 0;
-  (GRAPH.violations || []).forEach(function(v) {
-    if (!v.trace || v.trace.length === 0) return;
-    bugNum++;
-    var sl = SCENARIO_LABELS[v.id];
-    var label = sl && sl.title
-      ? '\u274C Bug ' + bugNum + ': ' + sl.title
-      : v.id + ': ' + (v.invariant || v.property || v.type);
-    scenarios.push({
-      name: label,
-      description: sl && sl.description ? sl.description : (v.summary || ''),
-      rule: sl && sl.rule != null ? sl.rule : (v.invariant || v.property || null),
-      type: v.type,
-      traceLen: v.trace.length,
-      trace: v.trace
-    });
-  });
-
-  if (scenarios.length === 0) return;
-
-  var section = document.getElementById('scenarios-section');
-  section.style.display = '';
-  var select = document.getElementById('scenario-select');
-  scenarios.forEach(function(s, i) {
-    var opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = s.name;
-    select.appendChild(opt);
-  });
-
-  // Store for use by controls
-  window._scenarios = scenarios;
-
-  var descEl = document.getElementById('scenario-description');
-  select.addEventListener('change', function() {
-    var val = select.value;
-    if (val === '') {
-      activeScenario = null;
-      scenarioIndex = -1;
-      descEl.classList.remove('visible');
-      descEl.innerHTML = '';
-    } else {
-      var s = scenarios[parseInt(val)];
-      activeScenario = s;
-      scenarioIndex = -1;
-      resetPlayground();
-      activeScenario = s;
-      select.value = val;
-      var isHappy = s.type === 'happy';
-      var descHtml = '';
-      if (s.rule && s.type !== 'deadlock') {
-        var ruleLabel = INVARIANT_LABELS[s.rule] || s.rule;
-        descHtml += '<div class="scenario-desc-row">' +
-          '<span class="scenario-desc-label">Rule</span>' +
-          '<span class="scenario-desc-value rule-broken">' + escapeHtml(ruleLabel) + '</span></div>';
-      }
-      if (s.description) {
-        descHtml += '<div class="scenario-desc-row">' +
-          '<span class="scenario-desc-label">' + (isHappy ? 'Outcome' : 'Bug') + '</span>' +
-          '<span class="scenario-desc-value">' + escapeHtml(s.description) + '</span></div>';
-      }
-      descHtml += '<div class="scenario-desc-row">' +
-        '<span class="scenario-desc-label">Steps</span>' +
-        '<span class="scenario-desc-value">' + s.traceLen + (isHappy ? ' steps' : ' steps to failure') + '</span></div>';
-      descEl.innerHTML = descHtml;
-      descEl.classList.add('visible');
-    }
-    updateScenarioControls();
-  });
-
-  document.getElementById('scenario-step').addEventListener('click', function() {
-    if (!activeScenario) return;
-    scenarioIndex++;
-    if (scenarioIndex < activeScenario.trace.length) {
-      var entry = activeScenario.trace[scenarioIndex];
-      // Navigate to this state directly
-      if (entry.stateId) {
-        traceLog.push({
-          step: traceLog.length + 1,
-          action: entry.action || 'Initial state',
-          fromId: currentStateId,
-          toId: entry.stateId
-        });
-        currentStateId = entry.stateId;
-        renderAll();
-      }
-    }
-    updateScenarioControls();
-  });
-
-  document.getElementById('scenario-play-all').addEventListener('click', function() {
-    if (!activeScenario) return;
-    pendingTimeouts.forEach(function(id) { clearTimeout(id); });
-    pendingTimeouts = [];
-    var delay = 0;
-    for (var j = scenarioIndex + 1; j < activeScenario.trace.length; j++) {
-      (function(idx) {
-        var tid = setTimeout(function() {
-          scenarioIndex = idx;
-          var entry = activeScenario.trace[idx];
-          if (entry.stateId) {
-            traceLog.push({
-              step: traceLog.length + 1,
-              action: entry.action || 'Initial state',
-              fromId: currentStateId,
-              toId: entry.stateId
-            });
-            currentStateId = entry.stateId;
-            renderAll();
-          }
-          updateScenarioControls();
-        }, delay);
-        pendingTimeouts.push(tid);
-      })(j);
-      delay += 400;
-    }
-  });
-
-  document.getElementById('scenario-reset').addEventListener('click', function() {
-    var val = document.getElementById('scenario-select').value;
-    if (val !== '') {
-      scenarioIndex = -1;
-      resetPlayground();
-      activeScenario = scenarios[parseInt(val)];
-      document.getElementById('scenario-select').value = val;
-      updateScenarioControls();
-    }
-  });
-}
-
-function updateScenarioControls() {
-  var hasScenario = activeScenario !== null;
-  var atEnd = hasScenario && activeScenario.trace && scenarioIndex >= activeScenario.trace.length - 1;
-  document.getElementById('scenario-step').disabled = !hasScenario || atEnd;
-  document.getElementById('scenario-play-all').disabled = !hasScenario || atEnd;
-  document.getElementById('scenario-reset').disabled = !hasScenario;
-}
-
-// =====================================================================
-// Utilities
-// =====================================================================
-
-function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
-}
-
-var toastTimer;
-function showToast(msg) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3000);
-}
-
-// =====================================================================
-// Theme Toggle
+// Theme
 // =====================================================================
 
 function toggleTheme() {
@@ -1455,23 +578,22 @@ function toggleTheme() {
 
 (function initTheme() {
   var saved = localStorage.getItem('theme');
-  if (saved === 'dark') {
-    document.documentElement.classList.add('dark');
-  }
+  if (saved === 'dark') document.documentElement.classList.add('dark');
 })();
 
 // =====================================================================
 // Boot
 // =====================================================================
 
-// Set title from generated data
 if (typeof PLAYGROUND_TITLE !== 'undefined') {
-  document.title = PLAYGROUND_TITLE;
+  document.title = PLAYGROUND_TITLE + ' — Verification Report';
   document.getElementById('page-title').textContent = PLAYGROUND_TITLE;
 }
 
-initScenarios();
-renderAll();
+renderStatsBar();
+renderInvariants();
+renderViolations();
+renderHappyPaths();
 </script>
 </body>
 </html>

@@ -30,7 +30,7 @@ describe("playground_init", () => {
     // Verify content matches the bundled template
     const copied = await readFile(parsed.html_path, "utf-8");
     expect(copied).toContain("<!DOCTYPE html>");
-    expect(copied).toContain("System Playground");
+    expect(copied).toContain("Verification Report");
   });
 
   it("creates nested parent directories", async () => {
@@ -196,7 +196,7 @@ describe("playground_init", () => {
       expect(genJs).toContain("var SCENARIO_LABELS");
       expect(genJs).toContain("var HAPPY_PATHS");
       expect(genJs).not.toContain("function renderState(");
-      expect(genJs).toContain("function renderStateVisual");
+      expect(genJs).not.toContain("function renderStateVisual");
     });
 
     it("playground-gen.js does NOT contain GRAPH or PLAYGROUND_TITLE", async () => {
@@ -235,7 +235,7 @@ describe("playground_init", () => {
 
       expect(result.isError).toBe(true);
       const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.error).toContain("State graph file not found");
+      expect(parsed.error).toContain("ENOENT");
     });
 
     it("backward compat: no state_graph_file returns only html_path", async () => {

@@ -40,7 +40,6 @@ export function createServer(): McpServer {
   registerTlaTex(server);
   registerTlaStateGraph(server);
   registerPlaygroundInit(server);
-
   // Register resources
   registerResources(server);
 
