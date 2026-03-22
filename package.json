@@ -33,9 +33,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && rm -rf dist/templates && cp -r src/templates dist/templates",
+    "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "rm -rf dist/templates && cp -r src/templates dist/templates && tsc --watch",
+    "dev": "tsc --watch",
     "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"

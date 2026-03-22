@@ -20,7 +20,6 @@ import { registerTlcGenerateTraceSpec } from "./tools/tlc-generate-trace-spec.js
 import { registerTlcCoverage } from "./tools/tlc-coverage.js";
 import { registerTlaTex } from "./tools/tla-tex.js";
 import { registerTlaStateGraph } from "./tools/tla-state-graph.js";
-import { registerPlaygroundInit } from "./tools/playground-init.js";
 import { registerResources } from "./resources/specs.js";
 
 export function createServer(): McpServer {
@@ -39,7 +38,6 @@ export function createServer(): McpServer {
   registerTlcCoverage(server);
   registerTlaTex(server);
   registerTlaStateGraph(server);
-  registerPlaygroundInit(server);
   // Register resources
   registerResources(server);
 

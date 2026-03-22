@@ -84,7 +84,6 @@ describe("MCP server integration", () => {
       const names = tools.map(t => t.name).sort();
       expect(names).toEqual([
         "pcal_translate",
-        "playground_init",
         "tla_evaluate",
         "tla_parse",
         "tla_state_graph",
@@ -257,7 +256,7 @@ Back to state 2
       expect(parsed.error).toContain("traces_only requires tlc_output");
     });
 
-    it("errors when format is not playground", async () => {
+    it("errors when format is not json", async () => {
       const result = await client.callTool({
         name: "tla_state_graph",
         arguments: {
@@ -269,7 +268,7 @@ Back to state 2
 
       expect(result.isError).toBe(true);
       const parsed = parseToolResult(result);
-      expect(parsed.error).toContain("traces_only mode only supports playground format");
+      expect(parsed.error).toContain("traces_only mode only supports json format");
     });
   });
 

@@ -66,10 +66,10 @@ describe("tla_state_graph", () => {
     expect(parsed.edges[0].action).toBe("Next");
   });
 
-  it("returns playground format with transitions and status=success", async () => {
+  it("returns json format with transitions and status=success", async () => {
     vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
-    const result = await handler({ dot_file: "/specs/states.dot", format: "playground" });
+    const result = await handler({ dot_file: "/specs/states.dot", format: "json" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.status).toBe("success");
     expect(parsed).toHaveProperty("states");
@@ -95,7 +95,7 @@ describe("tla_state_graph", () => {
       return true;
     });
 
-    const result = await handler({ dot_file: "/specs/states.dot", cfg_file: "/specs/missing.cfg", format: "playground" });
+    const result = await handler({ dot_file: "/specs/states.dot", cfg_file: "/specs/missing.cfg", format: "json" });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("CFG file not found");
@@ -107,26 +107,26 @@ describe("tla_state_graph", () => {
       return true;
     });
 
-    const result = await handler({ dot_file: "/specs/states.dot", tlc_output_file: "/specs/missing.out", format: "playground" });
+    const result = await handler({ dot_file: "/specs/states.dot", tlc_output_file: "/specs/missing.out", format: "json" });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("TLC output file not found");
   });
 
-  it("parses cfg_file for invariants in playground format", async () => {
+  it("parses cfg_file for invariants in json format", async () => {
     vi.mocked(fs.readFileSync)
       .mockReturnValueOnce(TLC_DOT)
       .mockReturnValueOnce("INVARIANT TypeOK\nPROPERTY Liveness\n");
 
-    const result = await handler({ dot_file: "/specs/states.dot", cfg_file: "/specs/Spec.cfg", format: "playground" });
+    const result = await handler({ dot_file: "/specs/states.dot", cfg_file: "/specs/Spec.cfg", format: "json" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.invariants).toEqual(expect.arrayContaining(["TypeOK", "Liveness"]));
   });
 
-  it("returns partial=false and happyPaths in playground format", async () => {
+  it("returns partial=false and happyPaths in json format", async () => {
     vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
-    const result = await handler({ dot_file: "/specs/states.dot", format: "playground" });
+    const result = await handler({ dot_file: "/specs/states.dot", format: "json" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.partial).toBe(false);
     expect(parsed).toHaveProperty("happyPaths");
@@ -146,7 +146,7 @@ State 2: <Next line 10, col 1 of module Spec>
 `;
 
     const result = await handler({
-      format: "playground",
+      format: "json",
       traces_only: true,
       tlc_output: tlcOutput,
     });
@@ -162,7 +162,7 @@ State 2: <Next line 10, col 1 of module Spec>
 
   it("rejects traces_only without TLC output", async () => {
     const result = await handler({
-      format: "playground",
+      format: "json",
       traces_only: true,
     });
     expect(result.isError).toBe(true);
@@ -170,7 +170,7 @@ State 2: <Next line 10, col 1 of module Spec>
     expect(parsed.error).toContain("traces_only requires tlc_output");
   });
 
-  it("rejects traces_only with non-playground format", async () => {
+  it("rejects traces_only with non-json format", async () => {
     const result = await handler({
       format: "dot",
       traces_only: true,
@@ -178,11 +178,11 @@ State 2: <Next line 10, col 1 of module Spec>
     });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.error).toContain("traces_only mode only supports playground format");
+    expect(parsed.error).toContain("traces_only mode only supports json format");
   });
 
   it("requires dot_file when traces_only is false", async () => {
-    const result = await handler({ format: "playground" });
+    const result = await handler({ format: "json" });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("dot_file is required");
@@ -194,7 +194,7 @@ State 2: <Next line 10, col 1 of module Spec>
 
       const result = await handler({
         dot_file: "/specs/states.dot",
-        format: "playground",
+        format: "json",
         output_file: "/out/graph.json",
       });
       const parsed = JSON.parse(result.content[0].text);
@@ -220,7 +220,7 @@ State 2: <Next line 10, col 1 of module Spec>
 
       const result = await handler({
         dot_file: "/specs/states.dot",
-        format: "playground",
+        format: "json",
       });
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.states).toBeDefined();
@@ -229,7 +229,7 @@ State 2: <Next line 10, col 1 of module Spec>
       expect(vi.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
     });
 
-    it("rejects output_file with non-playground format", async () => {
+    it("rejects output_file with non-json format", async () => {
       vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
       const result = await handler({
@@ -239,7 +239,7 @@ State 2: <Next line 10, col 1 of module Spec>
       });
       expect(result.isError).toBe(true);
       const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.error).toContain("output_file is only supported with playground format");
+      expect(parsed.error).toContain("output_file is only supported with json format");
     });
 
     it("works with traces_only mode", async () => {
@@ -252,7 +252,7 @@ State 2: <Next line 10, col 1 of module Spec>
 `;
 
       const result = await handler({
-        format: "playground",
+        format: "json",
         traces_only: true,
         tlc_output: tlcOutput,
         output_file: "/out/traces.json",

@@ -18,7 +18,7 @@ import { formatToolResponse, formatToolError, validateFileExists } from "../lib/
 export function registerTlaStateGraph(server: McpServer): void {
   server.tool(
     "tla_state_graph",
-    "Load a TLC-generated DOT state graph file and return it in a structured format for exploration. Supports raw DOT, simplified adjacency list, or full playground format with disambiguated actions, invariants, and violation traces.",
+    "Load a TLC-generated DOT state graph file and return it in a structured format for exploration. Supports raw DOT, simplified adjacency list, or full JSON format with disambiguated actions, invariants, and violation traces.",
     {
       dot_file: absolutePath
         .optional()
@@ -34,28 +34,28 @@ export function registerTlaStateGraph(server: McpServer): void {
         .optional()
         .describe("Raw TLC output string (for violation traces). If both tlc_output and tlc_output_file are provided, tlc_output takes precedence."),
       format: z
-        .enum(["dot", "structured", "playground"])
-        .default("playground")
-        .describe("Output format: 'dot' (raw), 'structured' (adjacency list), or 'playground' (full)"),
+        .enum(["dot", "structured", "json"])
+        .default("json")
+        .describe("Output format: 'dot' (raw), 'structured' (adjacency list), or 'json' (full structured output with states, transitions, violations, happy paths)"),
       traces_only: z
         .boolean()
         .default(false)
         .describe("When true, build a minimal graph from TLC output traces alone (no DOT file needed). Returns partial: true."),
       output_file: absolutePath
         .optional()
-        .describe("Write playground JSON to this file instead of returning it inline (playground format only). Response will contain a compact summary."),
+        .describe("Write JSON to this file instead of returning it inline (json format only). Response will contain a compact summary."),
     },
     async ({ dot_file, cfg_file, tlc_output_file, tlc_output, format, traces_only, output_file }) => {
       try {
-        // output_file only makes sense for playground format
-        if (output_file && format !== "playground") {
-          throw new Error("output_file is only supported with playground format");
+        // output_file only makes sense for json format
+        if (output_file && format !== "json") {
+          throw new Error("output_file is only supported with json format");
         }
 
         // -- traces_only mode: build graph from TLC output alone ---------------
         if (traces_only) {
-          if (format !== "playground") {
-            throw new Error("traces_only mode only supports playground format");
+          if (format !== "json") {
+            throw new Error("traces_only mode only supports json format");
           }
 
           const tlcOutputStr = tlc_output ?? (tlc_output_file ? (validateFileExists(tlc_output_file, "TLC output file"), fs.readFileSync(tlc_output_file, "utf-8")) : undefined);
@@ -87,7 +87,7 @@ export function registerTlaStateGraph(server: McpServer): void {
             happyPaths = extractPrefixHappyPaths(traceGraph.violations, violationFinalStates);
           }
 
-          return buildPlaygroundResponse({
+          return buildJsonResponse({
             status: "success",
             partial: true,
             initialStateId: traceGraph.initialStateId,
@@ -146,10 +146,10 @@ export function registerTlaStateGraph(server: McpServer): void {
           });
         }
 
-        // Playground format: full output
+        // JSON format: full output
         const transitions = disambiguateActions(graph.states, graph.edges);
 
-        // Build states map for playground
+        // Build states map
         const states: Record<string, { label: string; vars: Record<string, unknown> }> = {};
         for (const [id, s] of Object.entries(graph.states)) {
           states[id] = { label: s.label, vars: s.vars };
@@ -173,7 +173,7 @@ export function registerTlaStateGraph(server: McpServer): void {
         const violationFinalStates = buildViolationFinalStates(violations);
         const happyPaths = discoverHappyPaths(graph.initialStateId, transitions, violationFinalStates);
 
-        return buildPlaygroundResponse({
+        return buildJsonResponse({
           status: "success",
           partial: false,
           initialStateId: graph.initialStateId,
@@ -190,7 +190,7 @@ export function registerTlaStateGraph(server: McpServer): void {
   );
 }
 
-interface PlaygroundData {
+interface StateGraphData {
   status: string;
   partial: boolean;
   initialStateId: string;
@@ -201,7 +201,7 @@ interface PlaygroundData {
   happyPaths: HappyPath[];
 }
 
-function buildPlaygroundResponse(data: PlaygroundData, outputFile?: string) {
+function buildJsonResponse(data: StateGraphData, outputFile?: string) {
   if (!outputFile) {
     return formatToolResponse(data);
   }
