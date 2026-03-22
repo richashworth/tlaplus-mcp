@@ -6,20 +6,20 @@ MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as struc
 
 This server is the tooling backend for [tlaplus-workflow](https://github.com/richashworth/tlaplus-workflow), a Claude Code plugin that hides TLA+ formal verification behind a conversational interface.
 
-**tlaplus-workflow** provides the agents (specifier, verifier, animator, etc.) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
+**tlaplus-workflow** provides the agents (extractor, specifier, reviewer, verifier) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
 
 ```
 tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
 ┌──────────────────────┐           ┌──────────────────────┐
-│  specifier agent     │           │  tla_parse            │
-│  verifier agent      │──MCP────▶│  tlc_check            │
-│  animator agent      │  tools   │  tlc_simulate          │
-│  test-writer agent   │           │  tla_evaluate          │
-│  extractor agent     │           │  tla_state_graph       │
-│  implementer agent   │           │  pcal_translate        │
-│                      │           │  tlc_coverage          │
-│  /tlaplus-workflow   │           │  tlc_generate_trace_spec│
-│  skill               │           │  tla_tex               │
+│  extractor agent     │           │  tla_parse            │
+│  specifier agent     │           │  tlc_check            │
+│  reviewer agent      │──MCP────▶│  tlc_simulate          │
+│  verifier agent      │  tools   │  tla_evaluate          │
+│                      │           │  tla_state_graph       │
+│  /tlaplus-workflow   │           │  pcal_translate        │
+│  skill               │           │  tlc_coverage          │
+│                      │           │  tlc_generate_trace_spec│
+│                      │           │  tla_tex               │
 └──────────────────────┘           └──────────────────────┘
 ```
 
@@ -71,7 +71,6 @@ The server auto-downloads `tla2tools.jar` to `~/.tlaplus-mcp/lib/` on first use.
 | `tlc_coverage` | Run TLC with action coverage reporting |
 | `tla_tex` | Typeset a spec as PDF via TLATeX |
 | `tla_state_graph` | Parse a TLC DOT state graph into structured JSON |
-| `playground_init` | Copy playground template and generate data/render JS files |
 
 All tools return structured JSON with a `raw_output` field for fallback. Errors are returned as `isError` responses so the LLM can adapt.
 
@@ -143,9 +142,6 @@ src/
     tlc-coverage.ts           # tlc_coverage tool
     tla-tex.ts                # tla_tex tool
     tla-state-graph.ts        # tla_state_graph tool
-    playground-init.ts        # playground_init tool
-  generators/
-    playground-gen.ts         # Playground JS/CSS generation (pure functions)
   resources/
     specs.ts                  # MCP resources for browsing specs and output
 ```
