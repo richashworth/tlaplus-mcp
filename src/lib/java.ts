@@ -2,15 +2,20 @@
  * Java detection, tla2tools.jar resolution and auto-download.
  */
 
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
 
-const JAR_URL = "https://nightly.tlapl.us/dist/tla2tools.jar";
+// Version and checksum must be updated together
+export const TLAPLUS_VERSION = "1.8.0";
+const EXPECTED_SHA256 =
+  "23ba1aff43cc4708580d23b43f767dc968461ed4a18a26f0e66d90eae129542d";
+const JAR_URL = `https://github.com/tlaplus/tlaplus/releases/download/v${TLAPLUS_VERSION}/tla2tools.jar`;
 const DEFAULT_JAR_DIR = join(homedir(), ".tlaplus-mcp", "lib");
-const DEFAULT_JAR_PATH = join(DEFAULT_JAR_DIR, "tla2tools.jar");
+const DEFAULT_JAR_PATH = join(DEFAULT_JAR_DIR, `tla2tools-${TLAPLUS_VERSION}.jar`);
 
 /**
  * Parse the major Java version from `java -version` stderr output.
@@ -65,7 +70,7 @@ export function checkJava(): void {
  *
  * Resolution order:
  * 1. TLC_JAR_PATH environment variable
- * 2. ~/.tlaplus-mcp/lib/tla2tools.jar (auto-download if missing)
+ * 2. ~/.tlaplus-mcp/lib/tla2tools-{version}.jar (auto-download if missing)
  */
 export async function resolveJar(): Promise<string> {
   const config = loadConfig();
@@ -86,7 +91,7 @@ export async function resolveJar(): Promise<string> {
   return downloadJar();
 }
 
-/** Download tla2tools.jar to ~/.tlaplus-mcp/lib/ */
+/** Download tla2tools.jar to ~/.tlaplus-mcp/lib/ and verify its SHA-256 checksum. */
 async function downloadJar(): Promise<string> {
   mkdirSync(DEFAULT_JAR_DIR, { recursive: true });
 
@@ -103,6 +108,16 @@ async function downloadJar(): Promise<string> {
   if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
     throw new Error(
       `Downloaded file from ${JAR_URL} is not a valid JAR archive`
+    );
+  }
+
+  const actualHash = createHash("sha256").update(buffer).digest("hex");
+  if (actualHash !== EXPECTED_SHA256) {
+    throw new Error(
+      `SHA-256 checksum mismatch for tla2tools.jar v${TLAPLUS_VERSION}.\n` +
+        `Expected: ${EXPECTED_SHA256}\n` +
+        `Actual:   ${actualHash}\n` +
+        "The downloaded file may be corrupted or tampered with."
     );
   }
 
