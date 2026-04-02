@@ -26,10 +26,14 @@ describe("tla_evaluate", () => {
     expect(call.args).toContain("-tool");
   });
 
-  it("extracts result from structured tool-mode output (code 2186) with status=success", async () => {
+  it("extracts result from tool-mode output (skips @!@!@ markers) with status=success", async () => {
     const stdout = [
-      "@!@!@STARTMSG 2186:0 @!@!@",
+      "@!@!@STARTMSG 2185:0 @!@!@",
+      "Starting SANY...",
+      "@!@!@ENDMSG 2185 @!@!@",
       "42",
+      "@!@!@STARTMSG 2186:0 @!@!@",
+      "Finished in 00:00:01 at (2024-01-01 12:00:00)",
       "@!@!@ENDMSG 2186 @!@!@",
     ].join("\n");
 

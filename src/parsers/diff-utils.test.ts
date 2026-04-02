@@ -55,4 +55,11 @@ describe("compactDiff", () => {
     const vars = { x: "1", y: "2" };
     expect(compactDiff(vars, vars)).toEqual([]);
   });
+
+  it("detects variables that appear only in the target state", () => {
+    const src = { x: "1" };
+    const tgt = { x: "1", y: "new_val" };
+    const diffs = compactDiff(src, tgt);
+    expect(diffs).toEqual([["y", "(absent)", "new_val"]]);
+  });
 });

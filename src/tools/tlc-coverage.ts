@@ -4,7 +4,9 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { dirname, basename } from "node:path";
+import { dirname, basename, join } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
@@ -46,17 +48,30 @@ export function registerTlcCoverage(server: McpServer): void {
           args.push(...sanitizeExtraArgs(params.extra_args));
         }
 
+        // Redirect TLC checkpoint metadata to a temp directory so it
+        // doesn't pollute the user's project with states/ subdirectories.
+        const metaDir = mkdtempSync(join(tmpdir(), "tlc-meta-"));
+        args.push("-metadir", metaDir);
+
         // Spec file goes last
         args.push(specName);
 
-        const result = await runJava({
-          className: "tlc2.TLC",
-          args,
-          cwd,
-        });
+        let result;
+        try {
+          result = await runJava({
+            className: "tlc2.TLC",
+            args,
+            cwd,
+          });
+        } finally {
+          try { rmSync(metaDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+        }
 
         const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
+        if (result.timedOut) {
+          parsed.errors.push({ message: "TLC process killed: timeout exceeded" });
+        }
         const status = deriveStatus(parsed, result.timedOut);
 
         return formatToolResponse({

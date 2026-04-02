@@ -13,6 +13,8 @@ vi.mock("../lib/schemas.js", () => ({
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
+  mkdtempSync: vi.fn((prefix: string) => prefix + "test"),
+  rmSync: vi.fn(),
 }));
 
 import { registerTlcCoverage } from "./tlc-coverage.js";
@@ -55,5 +57,23 @@ describe("tlc_coverage", () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed).toHaveProperty("coverage");
     expect(parsed).toHaveProperty("status", "success");
+  });
+
+  it("includes timeout error message when result.timedOut is true", async () => {
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        stdout: "",
+        timedOut: true,
+        exitCode: 1,
+      }),
+    );
+    const result = await handler({ tla_file: "/specs/Spec.tla", interval_minutes: 1 });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("error");
+    expect(parsed.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: "TLC process killed: timeout exceeded" }),
+      ]),
+    );
   });
 });

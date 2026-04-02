@@ -267,7 +267,6 @@ function extractRawTracesLegacy(output: string): RawTrace[] {
         while (i < lines.length) {
           const vl = lines[i].trimEnd();
           if (
-            !vl ||
             STATE_HEADER_RE.test(vl) ||
             BACK_TO_STATE_RE.test(vl) ||
             vl.startsWith("Error:")
@@ -276,6 +275,10 @@ function extractRawTracesLegacy(output: string): RawTrace[] {
           }
           varLines.push(vl);
           i++;
+        }
+        // Trim trailing blank lines so they don't pollute the label
+        while (varLines.length > 0 && varLines[varLines.length - 1] === "") {
+          varLines.pop();
         }
 
         const label = varLines.join("\n");
@@ -315,6 +318,12 @@ function extractRawTracesFromMessages(messages: TlcMessage[]): RawTrace[] {
       vtype = "invariant";
       const invM = msg.body.match(/Invariant (\S+) is violated/);
       if (invM) vname = invM[1];
+    } else if (msg.code === 2159) {
+      vtype = "invariant";
+      // Assertion failure — no named invariant, but treat as invariant violation
+    } else if (msg.code === 2113) {
+      vtype = "invariant";
+      // Evaluation/type-check error — treat as invariant violation for trace extraction
     } else if (msg.code === 2114) {
       vtype = "deadlock";
     } else {
@@ -458,6 +467,21 @@ export function parseTlcOutput(output: string): TlcResult {
             summary: "Temporal property violated",
           });
           break;
+        case 2159: { // TLC assertion failure
+          success = false;
+          const assertBody = msg.body.trim();
+          violations.push({
+            type: "invariant",
+            summary: assertBody || "TLC assertion failure",
+          });
+          break;
+        }
+        case 2113: { // TLC evaluation error / type check failure
+          success = false;
+          const evalBody = msg.body.trim();
+          errors.push({ message: evalBody || "TLC evaluation error" });
+          break;
+        }
         case 2199: { // State statistics
           const sm = msg.body.match(/(\d+) states generated, (\d+) distinct states found/);
           if (sm) {
@@ -613,7 +637,7 @@ export function parseTlcOutput(output: string): TlcResult {
 
 // -- Tool-mode message code sets ---------------------------------------------
 
-const VIOLATION_CODES = new Set([2110, 2107, 2114, 2116]);
+const VIOLATION_CODES = new Set([2110, 2107, 2114, 2116, 2159, 2113]);
 const STATE_CODES = new Set([2216, 2217, 2218, 2122]);
 const SKIP_CODES = new Set([2121, 2120]); // informational headers
 

@@ -6,7 +6,8 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { absolutePath } from "../lib/schemas.js";
 import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
 
@@ -51,13 +52,23 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
           args.push(...sanitizeExtraArgs(extra_args));
         }
 
+        // Redirect TLC checkpoint metadata to a temp directory so it
+        // doesn't pollute the user's project with states/ subdirectories.
+        const metaDir = mkdtempSync(join(tmpdir(), "tlc-meta-"));
+        args.push("-metadir", metaDir);
+
         args.push(tla_file);
 
-        const result = await runJava({
-          className: "tlc2.TLC",
-          args,
-          cwd: dir,
-        });
+        let result;
+        try {
+          result = await runJava({
+            className: "tlc2.TLC",
+            args,
+            cwd: dir,
+          });
+        } finally {
+          try { rmSync(metaDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+        }
 
         const output = combineOutput(result);
 

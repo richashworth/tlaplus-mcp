@@ -544,4 +544,42 @@ State 2: <Next line 10, col 1 of module Spec>
     expect(graph.edges).toHaveLength(0);
     expect(graph.violations).toHaveLength(0);
   });
+
+  it("legacy parser handles blank lines within a state's variable values", () => {
+    // TLC can emit blank lines inside multi-line values (e.g., large function
+    // displays). The legacy parser must not treat these as state boundaries.
+    const output = [
+      "Error: Invariant TypeOK is violated.",
+      "State 1: <Init line 5, col 1 of module Spec>",
+      "/\\ x = 1",
+      "/\\ f = ( 0 :> 0 @@",
+      "",
+      "  1 :> 1 @@",
+      "",
+      "  2 :> 2 )",
+      "/\\ y = TRUE",
+      "",
+      "State 2: <Next line 10, col 1 of module Spec>",
+      "/\\ x = 2",
+      "/\\ f = ( 0 :> 0 @@",
+      "  1 :> 1 @@",
+      "  2 :> 2 )",
+      "/\\ y = FALSE",
+      "",
+    ].join("\n");
+
+    const graph = buildGraphFromTraces(output);
+    // Both states should be parsed (the blank lines within state 1 must not
+    // truncate it)
+    expect(Object.keys(graph.states)).toHaveLength(2);
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.violations).toHaveLength(1);
+    expect(graph.violations[0].type).toBe("invariant");
+    expect(graph.violations[0].trace).toHaveLength(2);
+    // State 1's label should contain the blank lines within the value
+    expect(graph.states["t1"].label).toContain("1 :> 1");
+    expect(graph.states["t1"].label).toContain("2 :> 2");
+    // State 2 should also be fully parsed
+    expect(graph.states["t2"].vars).toHaveProperty("y");
+  });
 });

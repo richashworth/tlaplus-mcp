@@ -127,6 +127,7 @@ async function downloadJar(): Promise<string> {
 
 /** Get the jar path, throwing a user-friendly error if unavailable. */
 let cachedJarPath: string | undefined;
+let pendingResolve: Promise<string> | undefined;
 export async function getJarPath(): Promise<string> {
   if (cachedJarPath) {
     if (!existsSync(cachedJarPath)) {
@@ -135,7 +136,17 @@ export async function getJarPath(): Promise<string> {
       return cachedJarPath;
     }
   }
-  checkJava();
-  cachedJarPath = await resolveJar();
-  return cachedJarPath;
+  // Deduplicate concurrent calls to prevent parallel downloads
+  if (!pendingResolve) {
+    pendingResolve = (async () => {
+      checkJava();
+      return resolveJar();
+    })();
+  }
+  try {
+    cachedJarPath = await pendingResolve;
+    return cachedJarPath;
+  } finally {
+    pendingResolve = undefined;
+  }
 }

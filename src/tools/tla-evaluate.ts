@@ -10,7 +10,6 @@ import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
-import { extractMessageBody } from "../parsers/tlc-output.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
   server.tool(
@@ -63,36 +62,35 @@ export function registerTlaEvaluate(server: McpServer): void {
 
         const output = combineOutput(result);
 
-        // Try structured tool-mode parsing: extract PrintT output (message code 2186)
-        let evaluated = extractMessageBody(result.stdout, 2186);
-
-        // Fallback: prefix-blocklist parsing for non-tool-mode output
-        if (evaluated === null) {
-          const lines = result.stdout.split("\n");
-          for (const line of lines) {
-            const trimmed = line.trim();
-            // Skip TLC banner/status lines
-            if (
-              !trimmed ||
-              trimmed.startsWith("TLC2") ||
-              trimmed.startsWith("Starting") ||
-              trimmed.startsWith("Finished") ||
-              trimmed.startsWith("@!@!@") ||
-              trimmed.startsWith("\\*") ||
-              trimmed.startsWith("Warning:") ||
-              trimmed.startsWith("Model-checking") ||
-              trimmed.startsWith("Running") ||
-              trimmed.startsWith("Implied-temporal") ||
-              trimmed.startsWith("The model ") ||
-              trimmed.startsWith("Checking temporal ") ||
-              trimmed.startsWith("Progress") ||
-              trimmed.startsWith("Semantic processing")
-            ) {
-              continue;
-            }
-            evaluated = trimmed;
-            break;
+        // Extract PrintT output by filtering out known TLC banner/status lines.
+        // PrintT content appears as plain text in the output stream (both in
+        // tool-mode where it is interleaved with @!@!@ markers, and in
+        // non-tool-mode).
+        let evaluated: string | null = null;
+        const lines = result.stdout.split("\n");
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip TLC banner/status lines
+          if (
+            !trimmed ||
+            trimmed.startsWith("TLC2") ||
+            trimmed.startsWith("Starting") ||
+            trimmed.startsWith("Finished") ||
+            trimmed.startsWith("@!@!@") ||
+            trimmed.startsWith("\\*") ||
+            trimmed.startsWith("Warning:") ||
+            trimmed.startsWith("Model-checking") ||
+            trimmed.startsWith("Running") ||
+            trimmed.startsWith("Implied-temporal") ||
+            trimmed.startsWith("The model ") ||
+            trimmed.startsWith("Checking temporal ") ||
+            trimmed.startsWith("Progress") ||
+            trimmed.startsWith("Semantic processing")
+          ) {
+            continue;
           }
+          evaluated = trimmed;
+          break;
         }
 
         // Check for errors

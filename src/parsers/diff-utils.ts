@@ -25,5 +25,11 @@ export function compactDiff(
       diffs.push([k, short(srcVars[k]), short(tgtVars[k])]);
     }
   }
+  // Detect variables that appear only in the target state
+  for (const k of Object.keys(tgtVars)) {
+    if (!(k in srcVars)) {
+      diffs.push([k, "(absent)", short(tgtVars[k])]);
+    }
+  }
   return diffs;
 }

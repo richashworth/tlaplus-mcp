@@ -14,6 +14,8 @@ vi.mock("../lib/schemas.js", () => ({
 const mockExistsSync = vi.fn();
 vi.mock("node:fs", () => ({
   existsSync: (...args: any[]) => mockExistsSync(...args),
+  mkdtempSync: vi.fn((prefix: string) => prefix + "test"),
+  rmSync: vi.fn(),
 }));
 
 import { registerTlcGenerateTraceSpec } from "./tlc-generate-trace-spec.js";

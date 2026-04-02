@@ -77,4 +77,22 @@ describe("tlc_simulate", () => {
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("/specs/Spec.cfg");
   });
+
+  it("includes timeout error message when result.timedOut is true", async () => {
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        stdout: "",
+        timedOut: true,
+        exitCode: 1,
+      }),
+    );
+    const result = await handler({ tla_file: "/specs/Spec.tla", depth: 100 });
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.status).toBe("error");
+    expect(parsed.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: "TLC process killed: timeout exceeded" }),
+      ]),
+    );
+  });
 });
