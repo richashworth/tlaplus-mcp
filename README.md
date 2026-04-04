@@ -131,6 +131,7 @@ src/
     cfg.ts                    # CFG invariant/property parser
     tlc-output.ts             # TLC stdout parser (stats, violations, coverage, trace graphs)
     action-disambiguator.ts   # Disambiguate duplicate action labels with variable diffs
+    diff-utils.ts             # Shared diff utilities for comparing TLA+ variable maps
     happy-paths.ts            # BFS discovery of successful execution paths
   tools/
     tlc-check.ts              # tlc_check tool
