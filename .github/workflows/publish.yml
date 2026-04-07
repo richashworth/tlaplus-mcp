@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -22,5 +21,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - run: npm config delete //registry.npmjs.org/:_authToken
-      - run: npm publish --access public --provenance
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
