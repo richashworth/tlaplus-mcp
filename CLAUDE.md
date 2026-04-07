@@ -2,6 +2,13 @@
 
 MCP server exposing TLA+ formal verification tools (TLC, SANY, PlusCal, TLATeX) as structured JSON over the Model Context Protocol.
 
+## Release
+
+```bash
+npm version patch   # or minor / major — bumps version, commits, tags
+git push --tags     # triggers publish workflow → publishes to @richashworth/tlaplus-mcp on npm
+```
+
 ## Build & Test
 
 ```bash
