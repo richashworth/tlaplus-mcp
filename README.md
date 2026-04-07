@@ -26,7 +26,7 @@ tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
 ## Installation
 
 ```bash
-npx -y github:richashworth/tlaplus-mcp
+npx -y @richashworth/tlaplus-mcp
 ```
 
 ### Configure in Claude Code
@@ -38,7 +38,7 @@ Add to your MCP server config (`.claude/settings.json` or per-project `.mcp.json
   "mcpServers": {
     "tlaplus": {
       "command": "npx",
-      "args": ["-y", "github:richashworth/tlaplus-mcp"]
+      "args": ["-y", "@richashworth/tlaplus-mcp"]
     }
   }
 }
