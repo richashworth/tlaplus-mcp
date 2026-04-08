@@ -22,7 +22,8 @@ let client: Client;
 async function setupClientServer() {
   const server = createServer();
   const c = new Client({ name: "test-client", version: "1.0.0" });
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
   await Promise.all([
     c.connect(clientTransport),
     server.connect(serverTransport),
@@ -30,12 +31,16 @@ async function setupClientServer() {
   return { client: c, server };
 }
 
-function parseToolResult(result: Awaited<ReturnType<typeof client.callTool>>): any {
+function parseToolResult(
+  result: Awaited<ReturnType<typeof client.callTool>>,
+): any {
   const content = result.content as Array<{ type: string; text: string }>;
   return JSON.parse(content[0].text);
 }
 
-function getResultText(result: Awaited<ReturnType<typeof client.callTool>>): string {
+function getResultText(
+  result: Awaited<ReturnType<typeof client.callTool>>,
+): string {
   return (result.content as Array<{ text: string }>)[0].text;
 }
 
@@ -81,7 +86,7 @@ describe("MCP server integration", () => {
   describe("tool registration", () => {
     it("lists all expected tools", async () => {
       const { tools } = await client.listTools();
-      const names = tools.map(t => t.name).sort();
+      const names = tools.map((t) => t.name).sort();
       expect(names).toEqual([
         "pcal_translate",
         "tla_evaluate",
@@ -98,26 +103,31 @@ describe("MCP server integration", () => {
     it("every tool has a description", async () => {
       const { tools } = await client.listTools();
       for (const tool of tools) {
-        expect(tool.description, `${tool.name} missing description`).toBeTruthy();
+        expect(
+          tool.description,
+          `${tool.name} missing description`,
+        ).toBeTruthy();
       }
     });
 
     it("every tool has an input schema with type=object", async () => {
       const { tools } = await client.listTools();
       for (const tool of tools) {
-        expect(tool.inputSchema.type, `${tool.name} schema type`).toBe("object");
+        expect(tool.inputSchema.type, `${tool.name} schema type`).toBe(
+          "object",
+        );
       }
     });
 
     it("tla_state_graph has traces_only parameter in schema", async () => {
       const { tools } = await client.listTools();
-      const stateGraph = tools.find(t => t.name === "tla_state_graph")!;
+      const stateGraph = tools.find((t) => t.name === "tla_state_graph")!;
       expect(stateGraph.inputSchema.properties).toHaveProperty("traces_only");
     });
 
     it("tla_state_graph has dot_file as optional", async () => {
       const { tools } = await client.listTools();
-      const stateGraph = tools.find(t => t.name === "tla_state_graph")!;
+      const stateGraph = tools.find((t) => t.name === "tla_state_graph")!;
       const required = stateGraph.inputSchema.required ?? [];
       expect(required).not.toContain("dot_file");
     });
@@ -128,7 +138,7 @@ describe("MCP server integration", () => {
   describe("resource registration", () => {
     it("lists tla://specs resource", async () => {
       const { resources } = await client.listResources();
-      const uris = resources.map(r => r.uri);
+      const uris = resources.map((r) => r.uri);
       expect(uris).toContain("tla://specs");
     });
   });
@@ -239,7 +249,8 @@ Back to state 2
       expect(parsed.violations).toHaveLength(1);
       expect(parsed.violations[0].type).toBe("temporal");
       expect(parsed.violations[0].property).toBe("Liveness");
-      const lastEntry = parsed.violations[0].trace[parsed.violations[0].trace.length - 1];
+      const lastEntry =
+        parsed.violations[0].trace[parsed.violations[0].trace.length - 1];
       expect(lastEntry.action).toBe("Back to state");
     });
 
@@ -268,7 +279,9 @@ Back to state 2
 
       expect(result.isError).toBe(true);
       const parsed = parseToolResult(result);
-      expect(parsed.error).toContain("traces_only mode only supports json format");
+      expect(parsed.error).toContain(
+        "traces_only mode only supports json format",
+      );
     });
   });
 
@@ -301,22 +314,28 @@ Back to state 2
   // -- tlc_check --------------------------------------------------------------
 
   describe("tlc_check", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tlc_check"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tlc_check"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tlc_check"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tlc_check"));
   });
 
   // -- tlc_simulate -----------------------------------------------------------
 
   describe("tlc_simulate", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tlc_simulate"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tlc_simulate"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tlc_simulate"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tlc_simulate"));
   });
 
   // -- tla_parse --------------------------------------------------------------
 
   describe("tla_parse", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tla_parse"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tla_parse"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tla_parse"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tla_parse"));
   });
 
   // -- tla_evaluate -----------------------------------------------------------
@@ -350,28 +369,36 @@ Back to state 2
   // -- pcal_translate ---------------------------------------------------------
 
   describe("pcal_translate", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("pcal_translate"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("pcal_translate"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("pcal_translate"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("pcal_translate"));
   });
 
   // -- tlc_generate_trace_spec ------------------------------------------------
 
   describe("tlc_generate_trace_spec", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tlc_generate_trace_spec"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tlc_generate_trace_spec"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tlc_generate_trace_spec"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tlc_generate_trace_spec"));
   });
 
   // -- tlc_coverage -----------------------------------------------------------
 
   describe("tlc_coverage", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tlc_coverage"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tlc_coverage"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tlc_coverage"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tlc_coverage"));
   });
 
   // -- tla_tex ----------------------------------------------------------------
 
   describe("tla_tex", () => {
-    it("errors when tla_file does not exist", () => expectFileNotFound("tla_tex"));
-    it("rejects non-absolute tla_file path", () => expectAbsolutePathRequired("tla_tex"));
+    it("errors when tla_file does not exist", () =>
+      expectFileNotFound("tla_tex"));
+    it("rejects non-absolute tla_file path", () =>
+      expectAbsolutePathRequired("tla_tex"));
   });
 });
