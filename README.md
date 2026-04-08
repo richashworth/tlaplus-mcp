@@ -4,7 +4,7 @@ MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as struc
 
 ## Relationship to tlaplus-workflow
 
-This server is the tooling backend for [tlaplus-workflow](https://github.com/richashworth/tlaplus-workflow), a Claude Code plugin that hides TLA+ formal verification behind a conversational interface.
+This server is the tooling backend for [tlaplus-workflow](https://github.com/richashworth/tlaplus-workflow), a Claude Code plugin that provides access to TLA+ tools behind a conversational interface.
 
 **tlaplus-workflow** provides the agents (extractor, specifier, reviewer, verifier) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
 
