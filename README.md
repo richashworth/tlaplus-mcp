@@ -106,35 +106,3 @@ npx vitest run src/parsers/                 # Parser unit tests only
 npx vitest run src/tools/                   # Tool handler unit tests only
 ```
 
-## Project structure
-
-```
-src/
-  index.ts                    # Entry point — starts stdio transport
-  server.ts                   # Server factory — registers tools + resources
-  integration.test.ts         # MCP protocol integration tests
-  lib/
-    config.ts                 # Environment variable config
-    java.ts                   # Java detection, jar resolution, auto-download
-    process.ts                # Spawn Java subprocess with timeout + cancellation
-  parsers/
-    tla-values.ts             # Recursive-descent parser for TLC-printed TLA+ values
-    dot.ts                    # DOT state graph parser
-    cfg.ts                    # CFG invariant/property parser
-    tlc-output.ts             # TLC stdout parser (stats, violations, coverage, trace graphs)
-    action-disambiguator.ts   # Disambiguate duplicate action labels with variable diffs
-    diff-utils.ts             # Shared diff utilities for comparing TLA+ variable maps
-    happy-paths.ts            # BFS discovery of successful execution paths
-  tools/
-    tlc-check.ts              # tlc_check tool
-    tlc-simulate.ts           # tlc_simulate tool
-    tla-parse.ts              # tla_parse tool
-    tla-evaluate.ts           # tla_evaluate tool
-    pcal-translate.ts         # pcal_translate tool
-    tlc-generate-trace-spec.ts
-    tlc-coverage.ts           # tlc_coverage tool
-    tla-tex.ts                # tla_tex tool
-    tla-state-graph.ts        # tla_state_graph tool
-  resources/
-    specs.ts                  # MCP resources for browsing specs and output
-```
