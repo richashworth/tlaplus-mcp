@@ -10,17 +10,17 @@ This server is the tooling backend for [tlaplus-workflow](https://github.com/ric
 
 ```
 tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
-┌──────────────────────┐           ┌──────────────────────┐
-│  extractor agent     │           │  tla_parse            │
-│  specifier agent     │           │  tlc_check            │
-│  reviewer agent      │──MCP────▶│  tlc_simulate          │
-│  verifier agent      │  tools   │  tla_evaluate          │
-│                      │           │  tla_state_graph       │
-│  /tlaplus-workflow   │           │  pcal_translate        │
-│  skill               │           │  tlc_coverage          │
-│                      │           │  tlc_generate_trace_spec│
-│                      │           │  tla_tex               │
-└──────────────────────┘           └──────────────────────┘
+┌──────────────────────┐           ┌──────────────────────────┐
+│  extractor agent     │           │  tla_parse               │
+│  specifier agent     │           │  tlc_check               │
+│  reviewer agent      │──MCP─────▶│  tlc_simulate            │
+│  verifier agent      │  tools    │  tla_evaluate            │
+│                      │           │  tla_state_graph         │
+│  /tlaplus-workflow   │           │  pcal_translate          │
+│  skill               │           │  tlc_coverage            │
+│                      │           │  tlc_generate_trace_spec │
+│                      │           │  tla_tex                 │
+└──────────────────────┘           └──────────────────────────┘
 ```
 
 ## Installation
