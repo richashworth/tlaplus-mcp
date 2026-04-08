@@ -2,25 +2,23 @@
 
 MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as structured JSON tools over the [Model Context Protocol](https://modelcontextprotocol.io).
 
-## Relationship to tlaplus-workflow
-
-This server is the tooling backend for [tlaplus-workflow](https://github.com/richashworth/tlaplus-workflow), a Claude Code plugin that provides access to TLA+ tools behind a conversational interface.
-
-**tlaplus-workflow** provides the agents (extractor, specifier, reviewer, verifier) and the conversational skill. Agents call typed MCP tools that return structured JSON — violations with traces, state counts, parsed state graphs, coverage data.
-
 ```
-tlaplus-workflow (plugin)          tlaplus-mcp (this repo)
-┌──────────────────────┐           ┌──────────────────────────┐
-│  extractor agent     │           │  tla_parse               │
-│  specifier agent     │           │  tlc_check               │
-│  reviewer agent      │──MCP─────▶│  tlc_simulate            │
-│  verifier agent      │  tools    │  tla_evaluate            │
-│                      │           │  tla_state_graph         │
-│  /tlaplus-workflow   │           │  pcal_translate          │
-│  skill               │           │  tlc_coverage            │
-│                      │           │  tlc_generate_trace_spec │
-│                      │           │  tla_tex                 │
-└──────────────────────┘           └──────────────────────────┘
+Any MCP client               tlaplus-mcp                    TLA+ toolchain
+┌────────────┐           ┌──────────────────┐           ┌──────────────────┐
+│ Claude Code│           │  tla_parse       │           │  TLC (checker)   │
+│ Cursor     │──MCP────▶│  tlc_check       │──Java───▶│  SANY (parser)   │
+│ custom app │  (stdio)  │  tlc_simulate    │           │  PlusCal         │
+└────────────┘           │  tla_evaluate    │           │  TLATeX          │
+                         │  pcal_translate  │           └──────────────────┘
+                         │  tlc_coverage    │
+                         │  tla_state_graph │
+                         │  tlc_trace_spec  │
+                         │  tla_tex         │
+                         │                  │
+                         │  tla://specs     │
+                         │  tla://spec/{f}  │
+                         │  tla://output    │
+                         └──────────────────┘
 ```
 
 ## Installation
