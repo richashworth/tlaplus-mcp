@@ -63,7 +63,7 @@ export function parseDot(content: string): DotGraph {
   if (initialId === null && Object.keys(states).length > 0) {
     // Fallback: pick smallest numeric id
     initialId = Object.keys(states).reduce((a, b) =>
-      parseInt(a, 10) < parseInt(b, 10) ? a : b
+      parseInt(a, 10) < parseInt(b, 10) ? a : b,
     );
   }
 

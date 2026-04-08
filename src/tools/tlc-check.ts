@@ -10,25 +10,78 @@ import { tmpdir } from "node:os";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  defaultCfgPath,
+  combineOutput,
+  deriveStatus,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 export function registerTlcCheck(server: McpServer): void {
   server.tool(
     "tlc_check",
     "Run TLC model checker in exhaustive breadth-first mode to verify a TLA+ specification. Checks all reachable states against invariants, properties, and (optionally) deadlock freedom.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
-      cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
-      workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
-      deadlock: z.boolean().default(true).describe("Check for deadlock (default true). Set false to disable deadlock checking."),
-      continue: z.boolean().default(false).describe("Continue model checking after finding a violation"),
-      dfid: z.number().int().positive().optional().describe("Use depth-first iterative deepening with given depth"),
-      diff_trace: z.boolean().optional().describe("Show only changed variables between trace states"),
-      max_set_size: z.number().int().positive().optional().describe("Override TLC's max set size (default 1000000)"),
-      generate_states: z.boolean().optional().describe("Dump state graph in DOT format"),
-      dump_path: z.string().optional().describe("Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed."),
-      extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
-      output_file: absolutePath.optional().describe("Write raw TLC output to this file instead of returning it inline. Response will contain output_file path instead of raw_output."),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla specification file",
+      ),
+      cfg_file: z
+        .string()
+        .optional()
+        .describe(
+          "Path to .cfg file (defaults to same basename as tla_file with .cfg extension)",
+        ),
+      workers: z
+        .union([z.number().int().positive(), z.literal("auto")])
+        .optional()
+        .describe("Number of worker threads, or 'auto' for all cores"),
+      deadlock: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Check for deadlock (default true). Set false to disable deadlock checking.",
+        ),
+      continue: z
+        .boolean()
+        .default(false)
+        .describe("Continue model checking after finding a violation"),
+      dfid: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Use depth-first iterative deepening with given depth"),
+      diff_trace: z
+        .boolean()
+        .optional()
+        .describe("Show only changed variables between trace states"),
+      max_set_size: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Override TLC's max set size (default 1000000)"),
+      generate_states: z
+        .boolean()
+        .optional()
+        .describe("Dump state graph in DOT format"),
+      dump_path: z
+        .string()
+        .optional()
+        .describe(
+          "Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed.",
+        ),
+      extra_args: z
+        .array(z.string())
+        .optional()
+        .describe("Additional raw arguments to pass to TLC"),
+      output_file: absolutePath
+        .optional()
+        .describe(
+          "Write raw TLC output to this file instead of returning it inline. Response will contain output_file path instead of raw_output.",
+        ),
     },
     async (params) => {
       try {
@@ -106,13 +159,19 @@ export function registerTlcCheck(server: McpServer): void {
             cwd,
           });
         } finally {
-          try { rmSync(metaDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+          try {
+            rmSync(metaDir, { recursive: true, force: true });
+          } catch {
+            /* best-effort */
+          }
         }
 
         const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
         if (result.timedOut) {
-          parsed.errors.push({ message: "TLC process killed: timeout exceeded" });
+          parsed.errors.push({
+            message: "TLC process killed: timeout exceeded",
+          });
         }
         const status = deriveStatus(parsed, result.timedOut);
 

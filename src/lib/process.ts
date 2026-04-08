@@ -31,11 +31,11 @@ export interface RunJavaResult {
  * Allowing these via extra_args would bypass validation or cause conflicts.
  */
 const BLOCKED_EXTRA_ARGS = [
-  "-dump",         // managed via generate_states/dump_path
-  "-dumptrace",    // writes trace to arbitrary disk paths
-  "-metadir",      // could redirect metadata to arbitrary paths
-  "-userfile",     // could write to arbitrary paths
-  "-tlafile",      // could overwrite arbitrary files
+  "-dump", // managed via generate_states/dump_path
+  "-dumptrace", // writes trace to arbitrary disk paths
+  "-metadir", // could redirect metadata to arbitrary paths
+  "-userfile", // could write to arbitrary paths
+  "-tlafile", // could overwrite arbitrary files
 ];
 
 /**
@@ -47,7 +47,9 @@ export function sanitizeExtraArgs(args: string[]): string[] {
     const normalized = arg.toLowerCase();
     for (const blocked of BLOCKED_EXTRA_ARGS) {
       if (normalized === blocked || normalized.startsWith(blocked + "=")) {
-        throw new Error(`Flag "${arg}" is not allowed in extra_args (use the dedicated tool parameter instead)`);
+        throw new Error(
+          `Flag "${arg}" is not allowed in extra_args (use the dedicated tool parameter instead)`,
+        );
       }
     }
   }

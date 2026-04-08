@@ -25,9 +25,11 @@ describe("tla_parse", () => {
   });
 
   it("calls SANY with the tla_file", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      stdout: "Parsing file /specs/Spec.tla\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        stdout: "Parsing file /specs/Spec.tla\n",
+      }),
+    );
 
     await handler({ tla_file: "/specs/Spec.tla" });
 
@@ -38,20 +40,27 @@ describe("tla_parse", () => {
   });
 
   it("extracts parsed modules from output", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      stdout: "Parsing file /specs/Spec.tla\nParsing file /specs/Other.tla\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        stdout: "Parsing file /specs/Spec.tla\nParsing file /specs/Other.tla\n",
+      }),
+    );
 
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
-    expect(parsed.modules_parsed).toEqual(["/specs/Spec.tla", "/specs/Other.tla"]);
+    expect(parsed.modules_parsed).toEqual([
+      "/specs/Spec.tla",
+      "/specs/Other.tla",
+    ]);
   });
 
   it("reports valid=true and status=success on clean exit", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 0,
-      stdout: "Parsing file /specs/Spec.tla\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 0,
+        stdout: "Parsing file /specs/Spec.tla\n",
+      }),
+    );
 
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
@@ -61,10 +70,12 @@ describe("tla_parse", () => {
   });
 
   it("extracts semantic errors with status=error", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: "line 10, col 5 to line 10, col 20 of module Spec\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: "line 10, col 5 to line 10, col 20 of module Spec\n",
+      }),
+    );
 
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
@@ -75,10 +86,12 @@ describe("tla_parse", () => {
   });
 
   it("extracts parse errors", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: '*** Parse Error ***\nEncountered "+" at line 5, column 3\n',
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: '*** Parse Error ***\nEncountered "+" at line 5, column 3\n',
+      }),
+    );
 
     const result = await handler({ tla_file: "/specs/Spec.tla" });
     const parsed = JSON.parse(result.content[0].text);
@@ -100,18 +113,26 @@ describe("tla_parse", () => {
       "",
     ].join("\n");
 
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: sanyOutput,
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: sanyOutput,
+      }),
+    );
 
     const result = await handler({ tla_file: "/specs/Test.tla" });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.valid).toBe(false);
     expect(parsed.errors.length).toBe(1);
     expect(parsed.errors[0].message).toContain("Unknown operator: `Foo'.");
-    expect(parsed.errors[0].message).toContain("line 5, col 3 to line 5, col 5 of module Test");
-    expect(parsed.errors[0].location).toEqual({ file: "/specs/Test.tla", line: 5, col: 3 });
+    expect(parsed.errors[0].message).toContain(
+      "line 5, col 3 to line 5, col 5 of module Test",
+    );
+    expect(parsed.errors[0].location).toEqual({
+      file: "/specs/Test.tla",
+      line: 5,
+      col: 3,
+    });
   });
 
   it("catches thrown errors", async () => {

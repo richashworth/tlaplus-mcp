@@ -19,8 +19,8 @@ export interface HappyPath {
 
 interface BfsNode {
   stateId: string;
-  actions: string[];   // action labels along the path (length = stateIds.length - 1)
-  stateIds: string[];  // all state IDs along the path (including this one)
+  actions: string[]; // action labels along the path (length = stateIds.length - 1)
+  stateIds: string[]; // all state IDs along the path (including this one)
 }
 
 /**
@@ -42,11 +42,13 @@ export function discoverHappyPaths(
   const seenActionSeqs = new Set<string>();
 
   const visited = new Set<string>();
-  const queue: BfsNode[] = [{
-    stateId: initialStateId,
-    actions: [],
-    stateIds: [initialStateId],
-  }];
+  const queue: BfsNode[] = [
+    {
+      stateId: initialStateId,
+      actions: [],
+      stateIds: [initialStateId],
+    },
+  ];
 
   while (queue.length > 0 && paths.length < maxPaths) {
     const node = queue.shift()!;
@@ -70,9 +72,15 @@ export function discoverHappyPaths(
     }
 
     // Check if all outgoing targets are violation final states
-    const validTransitions = outgoing.filter(t => !violationFinalStates.has(t.target));
+    const validTransitions = outgoing.filter(
+      (t) => !violationFinalStates.has(t.target),
+    );
 
-    if (validTransitions.length === 0 && !violationFinalStates.has(node.stateId) && node.stateIds.length > 1) {
+    if (
+      validTransitions.length === 0 &&
+      !violationFinalStates.has(node.stateId) &&
+      node.stateIds.length > 1
+    ) {
       const actionSeqKey = JSON.stringify(node.actions);
       if (!seenActionSeqs.has(actionSeqKey)) {
         seenActionSeqs.add(actionSeqKey);

@@ -17,11 +17,14 @@ export function short(v: unknown): string {
  */
 export function compactDiff(
   srcVars: VarMap,
-  tgtVars: VarMap
+  tgtVars: VarMap,
 ): Array<[string, string, string]> {
   const diffs: Array<[string, string, string]> = [];
   for (const k of Object.keys(srcVars)) {
-    if (k in tgtVars && JSON.stringify(srcVars[k]) !== JSON.stringify(tgtVars[k])) {
+    if (
+      k in tgtVars &&
+      JSON.stringify(srcVars[k]) !== JSON.stringify(tgtVars[k])
+    ) {
       diffs.push([k, short(srcVars[k]), short(tgtVars[k])]);
     }
   }

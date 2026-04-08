@@ -27,7 +27,8 @@ describe("tlc_simulate", () => {
     handler = captureToolHandler(registerTlcSimulate);
     mockRunJava.mockResolvedValue(
       mockRunJavaResult({
-        stdout: "Model checking completed. No error has been found.\nFinished in 00:00:01",
+        stdout:
+          "Model checking completed. No error has been found.\nFinished in 00:00:01",
       }),
     );
   });
@@ -91,7 +92,9 @@ describe("tlc_simulate", () => {
     expect(parsed.status).toBe("error");
     expect(parsed.errors).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ message: "TLC process killed: timeout exceeded" }),
+        expect.objectContaining({
+          message: "TLC process killed: timeout exceeded",
+        }),
       ]),
     );
   });

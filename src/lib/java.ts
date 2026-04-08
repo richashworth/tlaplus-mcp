@@ -15,7 +15,10 @@ const EXPECTED_SHA256 =
   "23ba1aff43cc4708580d23b43f767dc968461ed4a18a26f0e66d90eae129542d";
 const JAR_URL = `https://github.com/tlaplus/tlaplus/releases/download/v${TLAPLUS_VERSION}/tla2tools.jar`;
 const DEFAULT_JAR_DIR = join(homedir(), ".tlaplus-mcp", "lib");
-const DEFAULT_JAR_PATH = join(DEFAULT_JAR_DIR, `tla2tools-${TLAPLUS_VERSION}.jar`);
+const DEFAULT_JAR_PATH = join(
+  DEFAULT_JAR_DIR,
+  `tla2tools-${TLAPLUS_VERSION}.jar`,
+);
 
 /**
  * Parse the major Java version from `java -version` stderr output.
@@ -29,7 +32,7 @@ export function parseJavaVersion(versionOutput: string): number {
   const match = versionOutput.match(/version "(\d+)(?:\.(\d+))?/);
   if (!match) {
     throw new Error(
-      `Could not parse Java version from output:\n${versionOutput}`
+      `Could not parse Java version from output:\n${versionOutput}`,
     );
   }
 
@@ -51,7 +54,7 @@ export function checkJava(): void {
   if (result.error) {
     throw new Error(
       "Java is required but not found on PATH (JDK 11+).\n" +
-        "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)"
+        "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)",
     );
   }
 
@@ -60,7 +63,7 @@ export function checkJava(): void {
   if (version < MIN_JAVA_VERSION) {
     throw new Error(
       `Java ${MIN_JAVA_VERSION}+ is required but found Java ${version}.\n` +
-        "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)"
+        "Install: brew install openjdk (macOS) or apt install default-jdk (Linux)",
     );
   }
 }
@@ -95,10 +98,12 @@ export async function resolveJar(): Promise<string> {
 async function downloadJar(): Promise<string> {
   mkdirSync(DEFAULT_JAR_DIR, { recursive: true });
 
-  const response = await fetch(JAR_URL, { signal: AbortSignal.timeout(60_000) });
+  const response = await fetch(JAR_URL, {
+    signal: AbortSignal.timeout(60_000),
+  });
   if (!response.ok) {
     throw new Error(
-      `Failed to download tla2tools.jar from ${JAR_URL}: ${response.status} ${response.statusText}`
+      `Failed to download tla2tools.jar from ${JAR_URL}: ${response.status} ${response.statusText}`,
     );
   }
 
@@ -107,7 +112,7 @@ async function downloadJar(): Promise<string> {
   // Validate it's a ZIP/JAR (starts with PK magic bytes)
   if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
     throw new Error(
-      `Downloaded file from ${JAR_URL} is not a valid JAR archive`
+      `Downloaded file from ${JAR_URL} is not a valid JAR archive`,
     );
   }
 
@@ -117,7 +122,7 @@ async function downloadJar(): Promise<string> {
       `SHA-256 checksum mismatch for tla2tools.jar v${TLAPLUS_VERSION}.\n` +
         `Expected: ${EXPECTED_SHA256}\n` +
         `Actual:   ${actualHash}\n` +
-        "The downloaded file may be corrupted or tampered with."
+        "The downloaded file may be corrupted or tampered with.",
     );
   }
 

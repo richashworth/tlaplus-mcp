@@ -93,8 +93,12 @@ describe("sanitizeExtraArgs", () => {
 
   it("blocks flags using = syntax (e.g. -dump=dot)", () => {
     expect(() => sanitizeExtraArgs(["-dump=dot"])).toThrow(/not allowed/);
-    expect(() => sanitizeExtraArgs(["-metadir=/tmp/meta"])).toThrow(/not allowed/);
-    expect(() => sanitizeExtraArgs(["-DUMP=dot,colorize,actionlabels"])).toThrow(/not allowed/);
+    expect(() => sanitizeExtraArgs(["-metadir=/tmp/meta"])).toThrow(
+      /not allowed/,
+    );
+    expect(() =>
+      sanitizeExtraArgs(["-DUMP=dot,colorize,actionlabels"]),
+    ).toThrow(/not allowed/);
   });
 
   it("blocks -dumptrace", () => {

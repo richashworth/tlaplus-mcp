@@ -10,7 +10,12 @@ function captureResourceHandlers(registerFn: (server: any) => void) {
   const handlers = new Map<string, Function>();
 
   const mockServer = {
-    resource: (name: string, _uriOrTemplate: any, _opts: any, handler: Function) => {
+    resource: (
+      name: string,
+      _uriOrTemplate: any,
+      _opts: any,
+      handler: Function,
+    ) => {
       handlers.set(name, handler);
     },
   };
@@ -30,9 +35,12 @@ describe("specs resources", () => {
 
   describe("tla://specs", () => {
     it("lists .tla and .cfg files sorted", () => {
-      vi.spyOn(fs, "readdirSync").mockReturnValue(
-        ["Spec.tla", "README.md", "Spec.cfg", "Other.tla"] as any,
-      );
+      vi.spyOn(fs, "readdirSync").mockReturnValue([
+        "Spec.tla",
+        "README.md",
+        "Spec.cfg",
+        "Other.tla",
+      ] as any);
 
       const result = handlers.get("specs")!(new URL("tla://specs"));
       expect(result.contents[0].text).toBe("Other.tla\nSpec.cfg\nSpec.tla");
@@ -57,54 +65,50 @@ describe("specs resources", () => {
 
   describe("tla://spec/{filename}", () => {
     it("reads a valid .tla file", () => {
-      vi.spyOn(fs, "readFileSync").mockReturnValue("---- MODULE Spec ----\n====");
-
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/Spec.tla"),
-        { filename: "Spec.tla" },
+      vi.spyOn(fs, "readFileSync").mockReturnValue(
+        "---- MODULE Spec ----\n====",
       );
+
+      const result = handlers.get("spec")!(new URL("tla://spec/Spec.tla"), {
+        filename: "Spec.tla",
+      });
       expect(result.contents[0].text).toBe("---- MODULE Spec ----\n====");
     });
 
     it("rejects path traversal with ..", () => {
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/foo"),
-        { filename: "../etc/passwd" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/foo"), {
+        filename: "../etc/passwd",
+      });
       expect(result.contents[0].text).toContain("invalid filename");
     });
 
     it("rejects path traversal with /", () => {
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/foo"),
-        { filename: "sub/Spec.tla" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/foo"), {
+        filename: "sub/Spec.tla",
+      });
       expect(result.contents[0].text).toContain("invalid filename");
     });
 
     it("rejects path traversal with backslash", () => {
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/foo"),
-        { filename: "sub\\Spec.tla" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/foo"), {
+        filename: "sub\\Spec.tla",
+      });
       expect(result.contents[0].text).toContain("invalid filename");
     });
 
     it("rejects non-.tla/.cfg extensions", () => {
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/foo"),
-        { filename: "secret.json" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/foo"), {
+        filename: "secret.json",
+      });
       expect(result.contents[0].text).toContain("invalid filename");
     });
 
     it("allows .cfg files", () => {
       vi.spyOn(fs, "readFileSync").mockReturnValue("SPECIFICATION Spec");
 
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/Spec.cfg"),
-        { filename: "Spec.cfg" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/Spec.cfg"), {
+        filename: "Spec.cfg",
+      });
       expect(result.contents[0].text).toBe("SPECIFICATION Spec");
     });
 
@@ -113,10 +117,9 @@ describe("specs resources", () => {
         throw new Error("ENOENT");
       });
 
-      const result = handlers.get("spec")!(
-        new URL("tla://spec/Missing.tla"),
-        { filename: "Missing.tla" },
-      );
+      const result = handlers.get("spec")!(new URL("tla://spec/Missing.tla"), {
+        filename: "Missing.tla",
+      });
       expect(result.contents[0].text).toContain("file not found");
     });
   });
@@ -125,19 +128,27 @@ describe("specs resources", () => {
     it("returns placeholder when no output found", () => {
       vi.spyOn(fs, "readdirSync").mockReturnValue([] as any);
 
-      const result = handlers.get("latest-output")!(new URL("tla://output/latest"));
+      const result = handlers.get("latest-output")!(
+        new URL("tla://output/latest"),
+      );
       expect(result.contents[0].text).toContain("no TLC output found");
     });
 
     it("finds and reads tlc-output.txt", () => {
       const mockDirents = [
-        { name: "tlc-output.txt", isDirectory: () => false, isFile: () => true },
+        {
+          name: "tlc-output.txt",
+          isDirectory: () => false,
+          isFile: () => true,
+        },
       ];
       vi.spyOn(fs, "readdirSync").mockReturnValue(mockDirents as any);
       vi.spyOn(fs, "statSync").mockReturnValue({ mtimeMs: 1000 } as any);
       vi.spyOn(fs, "readFileSync").mockReturnValue("Model checking completed.");
 
-      const result = handlers.get("latest-output")!(new URL("tla://output/latest"));
+      const result = handlers.get("latest-output")!(
+        new URL("tla://output/latest"),
+      );
       expect(result.contents[0].text).toBe("Model checking completed.");
     });
   });

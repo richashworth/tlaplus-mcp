@@ -10,23 +10,69 @@ import { tmpdir } from "node:os";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  defaultCfgPath,
+  combineOutput,
+  deriveStatus,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 export function registerTlcSimulate(server: McpServer): void {
   server.tool(
     "tlc_simulate",
     "Run TLC in simulation mode to randomly explore execution traces. Faster than exhaustive checking but not complete — useful for large state spaces or quick smoke tests.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
-      cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
-      depth: z.number().int().positive().default(100).describe("Maximum depth of each simulation trace (default 100)"),
-      num_traces: z.number().int().positive().optional().describe("Number of traces to generate"),
-      seed: z.number().int().optional().describe("Random seed for reproducibility"),
-      aril: z.number().int().optional().describe("Aril (adjusts the random seed)"),
-      workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
-      deadlock: z.boolean().default(true).describe("Check for deadlock (default true). Set false to disable deadlock checking."),
-      diff_trace: z.boolean().optional().describe("Show only changed variables between trace states"),
-      extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla specification file",
+      ),
+      cfg_file: z
+        .string()
+        .optional()
+        .describe(
+          "Path to .cfg file (defaults to same basename as tla_file with .cfg extension)",
+        ),
+      depth: z
+        .number()
+        .int()
+        .positive()
+        .default(100)
+        .describe("Maximum depth of each simulation trace (default 100)"),
+      num_traces: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Number of traces to generate"),
+      seed: z
+        .number()
+        .int()
+        .optional()
+        .describe("Random seed for reproducibility"),
+      aril: z
+        .number()
+        .int()
+        .optional()
+        .describe("Aril (adjusts the random seed)"),
+      workers: z
+        .union([z.number().int().positive(), z.literal("auto")])
+        .optional()
+        .describe("Number of worker threads, or 'auto' for all cores"),
+      deadlock: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Check for deadlock (default true). Set false to disable deadlock checking.",
+        ),
+      diff_trace: z
+        .boolean()
+        .optional()
+        .describe("Show only changed variables between trace states"),
+      extra_args: z
+        .array(z.string())
+        .optional()
+        .describe("Additional raw arguments to pass to TLC"),
     },
     async (params) => {
       try {
@@ -95,13 +141,19 @@ export function registerTlcSimulate(server: McpServer): void {
             cwd,
           });
         } finally {
-          try { rmSync(metaDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+          try {
+            rmSync(metaDir, { recursive: true, force: true });
+          } catch {
+            /* best-effort */
+          }
         }
 
         const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
         if (result.timedOut) {
-          parsed.errors.push({ message: "TLC process killed: timeout exceeded" });
+          parsed.errors.push({
+            message: "TLC process killed: timeout exceeded",
+          });
         }
         const status = deriveStatus(parsed, result.timedOut);
 

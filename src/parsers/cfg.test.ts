@@ -25,7 +25,11 @@ describe("parseCfg", () => {
   NoHoarding
 `;
     const result = parseCfg(cfg);
-    expect(result.invariants).toEqual(["TypeOK", "NoDoubleBooking", "NoHoarding"]);
+    expect(result.invariants).toEqual([
+      "TypeOK",
+      "NoDoubleBooking",
+      "NoHoarding",
+    ]);
   });
 
   it("parses PROPERTY", () => {

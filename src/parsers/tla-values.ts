@@ -18,7 +18,10 @@ class ValueParser {
   // -- helpers ---------------------------------------------------------------
 
   private skipWs(): void {
-    while (this.pos < this.text.length && " \t\n\r".includes(this.text[this.pos])) {
+    while (
+      this.pos < this.text.length &&
+      " \t\n\r".includes(this.text[this.pos])
+    ) {
       this.pos++;
     }
   }
@@ -41,7 +44,7 @@ class ValueParser {
   private expect(s: string): void {
     if (!this.match(s)) {
       throw new Error(
-        `Expected ${JSON.stringify(s)} at pos ${this.pos}: ...${JSON.stringify(this.text.slice(this.pos, this.pos + 20))}...`
+        `Expected ${JSON.stringify(s)} at pos ${this.pos}: ...${JSON.stringify(this.text.slice(this.pos, this.pos + 20))}...`,
       );
     }
   }
@@ -63,28 +66,34 @@ class ValueParser {
     // String literal (possibly escaped quotes from DOT)
     if (
       c === '"' ||
-      (c === '\\' && this.pos + 1 < this.text.length && this.text[this.pos + 1] === '"')
+      (c === "\\" &&
+        this.pos + 1 < this.text.length &&
+        this.text[this.pos + 1] === '"')
     ) {
       return this.parseString();
     }
 
     // Sequence <<...>>
-    if (c === '<' && this.pos + 1 < this.text.length && this.text[this.pos + 1] === '<') {
+    if (
+      c === "<" &&
+      this.pos + 1 < this.text.length &&
+      this.text[this.pos + 1] === "<"
+    ) {
       return this.parseSequence();
     }
 
     // Set {...}
-    if (c === '{') {
+    if (c === "{") {
       return this.parseSet();
     }
 
     // Record [field |-> ...]
-    if (c === '[') {
+    if (c === "[") {
       return this.parseRecord();
     }
 
     // Parenthesized function display (k :> v @@ ...)
-    if (c === '(') {
+    if (c === "(") {
       return this.parseFunction();
     }
 
@@ -99,23 +108,23 @@ class ValueParser {
     }
 
     // Number (possibly negative)
-    if (c === '-' || (c >= '0' && c <= '9')) {
+    if (c === "-" || (c >= "0" && c <= "9")) {
       return this.parseNumber();
     }
 
     // Bare identifier (model value)
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_') {
+    if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_") {
       return this.parseIdentifier();
     }
 
     throw new Error(
-      `Unexpected char ${JSON.stringify(c)} at pos ${this.pos}: ...${JSON.stringify(this.text.slice(this.pos, this.pos + 20))}...`
+      `Unexpected char ${JSON.stringify(c)} at pos ${this.pos}: ...${JSON.stringify(this.text.slice(this.pos, this.pos + 20))}...`,
     );
   }
 
   private parseString(): string {
     if (
-      this.text[this.pos] === '\\' &&
+      this.text[this.pos] === "\\" &&
       this.pos + 1 < this.text.length &&
       this.text[this.pos + 1] === '"'
     ) {
@@ -132,7 +141,7 @@ class ValueParser {
     while (this.pos < this.text.length) {
       if (escapedQuote) {
         if (
-          this.text[this.pos] === '\\' &&
+          this.text[this.pos] === "\\" &&
           this.pos + 1 < this.text.length &&
           this.text[this.pos + 1] === '"'
         ) {
@@ -145,7 +154,7 @@ class ValueParser {
           return chars.join("");
         }
       }
-      if (this.text[this.pos] === '\\' && !escapedQuote) {
+      if (this.text[this.pos] === "\\" && !escapedQuote) {
         this.pos += 1;
         if (this.pos < this.text.length) {
           chars.push(this.text[this.pos]);
@@ -161,10 +170,14 @@ class ValueParser {
 
   private parseNumber(): number {
     const start = this.pos;
-    if (this.text[this.pos] === '-') {
+    if (this.text[this.pos] === "-") {
       this.pos++;
     }
-    while (this.pos < this.text.length && this.text[this.pos] >= '0' && this.text[this.pos] <= '9') {
+    while (
+      this.pos < this.text.length &&
+      this.text[this.pos] >= "0" &&
+      this.text[this.pos] <= "9"
+    ) {
       this.pos++;
     }
     return parseInt(this.text.slice(start, this.pos), 10);
@@ -174,10 +187,10 @@ class ValueParser {
     const start = this.pos;
     while (
       this.pos < this.text.length &&
-      ((this.text[this.pos] >= 'a' && this.text[this.pos] <= 'z') ||
-        (this.text[this.pos] >= 'A' && this.text[this.pos] <= 'Z') ||
-        (this.text[this.pos] >= '0' && this.text[this.pos] <= '9') ||
-        this.text[this.pos] === '_')
+      ((this.text[this.pos] >= "a" && this.text[this.pos] <= "z") ||
+        (this.text[this.pos] >= "A" && this.text[this.pos] <= "Z") ||
+        (this.text[this.pos] >= "0" && this.text[this.pos] <= "9") ||
+        this.text[this.pos] === "_")
     ) {
       this.pos++;
     }

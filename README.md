@@ -86,10 +86,14 @@ All tools return structured JSON with a `raw_output` field for fallback. Errors 
 ## Development
 
 ```bash
-npm run dev       # Watch mode (recompile on change)
-npm test          # Run all tests (unit + integration)
-npm run build     # Production build
+npm run dev          # Watch mode (recompile on change)
+npm test             # Run all tests (unit + integration)
+npm run build        # Production build
+npm run lint         # Run ESLint
+npm run format:check # Check Prettier formatting
 ```
+
+A pre-commit hook (husky + lint-staged) runs ESLint and Prettier on staged files automatically. CI also gates on both.
 
 ### Testing
 

@@ -3,7 +3,9 @@ import { absolutePath } from "./schemas.js";
 
 describe("absolutePath schema", () => {
   it("accepts absolute paths", () => {
-    expect(absolutePath.parse("/absolute/path/Spec.tla")).toBe("/absolute/path/Spec.tla");
+    expect(absolutePath.parse("/absolute/path/Spec.tla")).toBe(
+      "/absolute/path/Spec.tla",
+    );
   });
 
   it("accepts root path", () => {

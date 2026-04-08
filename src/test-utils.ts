@@ -2,7 +2,6 @@
  * Shared test utilities for tool handler tests.
  */
 
-import { vi } from "vitest";
 import type { RunJavaResult } from "./lib/process.js";
 
 /**

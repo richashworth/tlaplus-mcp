@@ -25,7 +25,12 @@ describe("defaultCfgPath", () => {
 
 describe("combineOutput", () => {
   it("joins stdout and stderr with newline", () => {
-    const result = { exitCode: 0, stdout: "out", stderr: "err", timedOut: false };
+    const result = {
+      exitCode: 0,
+      stdout: "out",
+      stderr: "err",
+      timedOut: false,
+    };
     expect(combineOutput(result)).toBe("out\nerr");
   });
 
@@ -44,7 +49,10 @@ describe("deriveStatus", () => {
   };
 
   it("returns 'violation' when timedOut is true but violations exist", () => {
-    const parsed = { ...baseParsed, violations: [{ type: "invariant" as const, name: "x", trace: [] }] };
+    const parsed = {
+      ...baseParsed,
+      violations: [{ type: "invariant" as const, name: "x", trace: [] }],
+    };
     expect(deriveStatus(parsed, true)).toBe("violation");
   });
 
@@ -53,7 +61,10 @@ describe("deriveStatus", () => {
   });
 
   it("returns 'violation' when violations exist", () => {
-    const parsed = { ...baseParsed, violations: [{ type: "invariant" as const, name: "x", trace: [] }] };
+    const parsed = {
+      ...baseParsed,
+      violations: [{ type: "invariant" as const, name: "x", trace: [] }],
+    };
     expect(deriveStatus(parsed, false)).toBe("violation");
   });
 
@@ -104,7 +115,6 @@ describe("formatToolError", () => {
     expect(parsed.error).toBe("404");
   });
 });
-
 
 describe("validateFileExists", () => {
   it("throws for non-existent file with descriptive message", () => {

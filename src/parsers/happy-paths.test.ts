@@ -46,7 +46,7 @@ describe("discoverHappyPaths", () => {
 
     const paths = discoverHappyPaths("1", transitions, new Set());
     expect(paths).toHaveLength(2);
-    const traceActions = paths.map(p => p.trace.map(e => e.action));
+    const traceActions = paths.map((p) => p.trace.map((e) => e.action));
     expect(traceActions).toContainEqual([null, "Left"]);
     expect(traceActions).toContainEqual([null, "Right"]);
   });
@@ -65,7 +65,14 @@ describe("discoverHappyPaths", () => {
 
   it("limits to maxPaths", () => {
     const transitions: Record<string, DisambiguatedTransition[]> = {
-      "1": [t("A", "2"), t("B", "3"), t("C", "4"), t("D", "5"), t("E", "6"), t("F", "7")],
+      "1": [
+        t("A", "2"),
+        t("B", "3"),
+        t("C", "4"),
+        t("D", "5"),
+        t("E", "6"),
+        t("F", "7"),
+      ],
     };
 
     const paths = discoverHappyPaths("1", transitions, new Set(), 3);
@@ -114,7 +121,7 @@ describe("discoverHappyPaths", () => {
     const paths = discoverHappyPaths("1", transitions, violationFinals);
     // Should find path 1->2->4, but not 1->3
     expect(paths.length).toBeGreaterThanOrEqual(1);
-    const allStateIds = paths.flatMap(p => p.trace.map(e => e.stateId));
+    const allStateIds = paths.flatMap((p) => p.trace.map((e) => e.stateId));
     expect(allStateIds).not.toContain("3");
   });
 });

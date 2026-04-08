@@ -4,7 +4,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  McpServer,
+  ResourceTemplate,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loadConfig } from "../lib/config.js";
 
 export function registerResources(server: McpServer): void {
@@ -12,16 +15,19 @@ export function registerResources(server: McpServer): void {
   server.resource(
     "specs",
     "tla://specs",
-    { description: "List all .tla and .cfg files in the TLA+ workspace directory" },
+    {
+      description:
+        "List all .tla and .cfg files in the TLA+ workspace directory",
+    },
     (uri) => {
       const { workspace } = loadConfig();
 
       let files: string[] = [];
       try {
         const entries = fs.readdirSync(workspace);
-        files = entries.filter(
-          (f) => f.endsWith(".tla") || f.endsWith(".cfg"),
-        ).sort();
+        files = entries
+          .filter((f) => f.endsWith(".tla") || f.endsWith(".cfg"))
+          .sort();
       } catch {
         // workspace dir may not exist
       }

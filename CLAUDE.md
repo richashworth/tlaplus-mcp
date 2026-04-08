@@ -44,7 +44,8 @@ npx vitest run src/lib/
 - All tool handlers use `formatToolResponse()` / `formatToolError()` from `src/lib/tool-helpers.ts`
 - Tool registration follows: `export function registerToolName(server: McpServer): void`
 - Zod schemas for parameter validation; `absolutePath` schema enforces absolute paths
-- No ESLint/Prettier configured — follow existing style
+- **ESLint** + **Prettier** enforced via pre-commit hook (husky + lint-staged) and CI
+- Run `npm run lint:fix && npm run format` to fix issues locally
 
 ## Environment Variables
 

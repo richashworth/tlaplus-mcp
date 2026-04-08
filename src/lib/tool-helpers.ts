@@ -32,7 +32,6 @@ export function deriveStatus(
   return "success";
 }
 
-
 /** Validate that a file exists, throwing a descriptive error if not. */
 export function validateFileExists(filePath: string, label: string): void {
   if (!existsSync(filePath)) {
@@ -51,7 +50,12 @@ export function formatToolResponse(data: object) {
 export function formatToolError(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
   return {
-    content: [{ type: "text" as const, text: JSON.stringify({ status: "error", error: msg }) }],
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify({ status: "error", error: msg }),
+      },
+    ],
     isError: true as const,
   };
 }

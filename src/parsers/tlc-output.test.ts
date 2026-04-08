@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseTlcOutput, parseTlcViolationTraces, parseTlcMessages, extractMessageBody, buildGraphFromTraces } from "./tlc-output.js";
+import {
+  parseTlcOutput,
+  parseTlcViolationTraces,
+  parseTlcMessages,
+  extractMessageBody,
+  buildGraphFromTraces,
+} from "./tlc-output.js";
 
 describe("parseTlcOutput", () => {
   it("parses successful run with state counts", () => {
@@ -222,9 +228,9 @@ State 2: <Next line 10, col 1 of module Spec>
 `;
 
     const graphStates = {
-      "a": { vars: { x: 1, y: 2 } },
-      "b": { vars: { x: 3, y: 4 } },
-      "c": { vars: { x: 5, y: 6 } },
+      a: { vars: { x: 1, y: 2 } },
+      b: { vars: { x: 3, y: 4 } },
+      c: { vars: { x: 5, y: 6 } },
     };
 
     const traces = parseTlcViolationTraces(output, graphStates);
@@ -249,8 +255,8 @@ Back to state 1
 `;
 
     const graphStates = {
-      "s1": { vars: { x: 1 } },
-      "s2": { vars: { x: 2 } },
+      s1: { vars: { x: 1 } },
+      s2: { vars: { x: 2 } },
     };
 
     const traces = parseTlcViolationTraces(output, graphStates);
@@ -289,9 +295,9 @@ describe("parseTlcViolationTraces (tool mode)", () => {
     ].join("\n");
 
     const graphStates = {
-      "a": { vars: { x: 1, y: 2 } },
-      "b": { vars: { x: 3, y: 4 } },
-      "c": { vars: { x: 5, y: 6 } },
+      a: { vars: { x: 1, y: 2 } },
+      b: { vars: { x: 3, y: 4 } },
+      c: { vars: { x: 5, y: 6 } },
     };
 
     const traces = parseTlcViolationTraces(output, graphStates);
@@ -328,8 +334,8 @@ describe("parseTlcViolationTraces (tool mode)", () => {
     ].join("\n");
 
     const graphStates = {
-      "s1": { vars: { x: 1 } },
-      "s2": { vars: { x: 2 } },
+      s1: { vars: { x: 1 } },
+      s2: { vars: { x: 2 } },
     };
 
     const traces = parseTlcViolationTraces(output, graphStates);
@@ -375,7 +381,11 @@ describe("parseTlcMessages", () => {
     const msgs = parseTlcMessages(output);
     expect(msgs).toHaveLength(2);
     expect(msgs![0]).toEqual({ code: 2186, severity: 0, body: "42" });
-    expect(msgs![1]).toEqual({ code: 2199, severity: 0, body: "10 states generated" });
+    expect(msgs![1]).toEqual({
+      code: 2199,
+      severity: 0,
+      body: "10 states generated",
+    });
   });
 
   it("captures multi-line message bodies", () => {
@@ -431,7 +441,11 @@ State 2: <Next line 10, col 1 of module Spec>
     expect(graph.states["t2"].vars).toEqual({ x: 3, y: 4 });
     expect(graph.initialStateId).toBe("t1");
     expect(graph.edges).toHaveLength(1);
-    expect(graph.edges[0]).toEqual({ source: "t1", target: "t2", action: "Next" });
+    expect(graph.edges[0]).toEqual({
+      source: "t1",
+      target: "t2",
+      action: "Next",
+    });
     expect(graph.violations).toHaveLength(1);
     expect(graph.violations[0].type).toBe("invariant");
     expect(graph.violations[0].invariant).toBe("TypeOK");
@@ -454,8 +468,16 @@ Back to state 1
     const graph = buildGraphFromTraces(output);
     expect(Object.keys(graph.states)).toHaveLength(2);
     expect(graph.edges).toHaveLength(2); // t1->t2 and t2->t1 (loop)
-    expect(graph.edges).toContainEqual({ source: "t1", target: "t2", action: "Next" });
-    expect(graph.edges).toContainEqual({ source: "t2", target: "t1", action: "Back" });
+    expect(graph.edges).toContainEqual({
+      source: "t1",
+      target: "t2",
+      action: "Next",
+    });
+    expect(graph.edges).toContainEqual({
+      source: "t2",
+      target: "t1",
+      action: "Back",
+    });
     expect(graph.violations[0].type).toBe("temporal");
     expect(graph.violations[0].property).toBe("Liveness");
     expect(graph.violations[0].trace).toHaveLength(3); // 2 states + back-to

@@ -72,9 +72,7 @@ describe("parseTlaValue", () => {
       a: [1, 2],
       b: [3, 4],
     });
-    expect(
-      parseTlaValue('(c1 :> [state |-> "active", count |-> 3])')
-    ).toEqual({
+    expect(parseTlaValue('(c1 :> [state |-> "active", count |-> 3])')).toEqual({
       c1: { state: "active", count: 3 },
     });
   });
@@ -91,7 +89,8 @@ describe("parseStateLabel", () => {
   });
 
   it("parses multiple variables", () => {
-    const label = '/\\ clientState = (c1 :> "browsing" @@ c2 :> "browsing")\n/\\ slotState = (s1 :> "free" @@ s2 :> "free")';
+    const label =
+      '/\\ clientState = (c1 :> "browsing" @@ c2 :> "browsing")\n/\\ slotState = (s1 :> "free" @@ s2 :> "free")';
     const result = parseStateLabel(label);
     expect(result).toEqual({
       clientState: { c1: "browsing", c2: "browsing" },

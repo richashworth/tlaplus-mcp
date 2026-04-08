@@ -2,12 +2,16 @@
  * tla_parse — Parse a TLA+ module with SANY.
  */
 
-import { z } from "zod";
 import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  combineOutput,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 interface ParseError {
   message: string;
@@ -19,7 +23,9 @@ export function registerTlaParse(server: McpServer): void {
     "tla_parse",
     "Parse and syntax-check a TLA+ module using SANY (Syntactic Analyzer). Returns parse errors and the list of modules parsed.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla file to parse"),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla file to parse",
+      ),
     },
     async ({ tla_file }) => {
       try {
@@ -43,7 +49,9 @@ export function registerTlaParse(server: McpServer): void {
           const filePath = match[1].trim();
           modulesParsed.push(filePath);
           // Extract module name from file path (basename without .tla)
-          const baseName = filePath.replace(/^.*[\\/]/, "").replace(/\.tla$/, "");
+          const baseName = filePath
+            .replace(/^.*[\\/]/, "")
+            .replace(/\.tla$/, "");
           moduleToPath.set(baseName, filePath);
         }
 
@@ -51,7 +59,8 @@ export function registerTlaParse(server: McpServer): void {
         // Pattern: "line <line>, col <col> to line <line>, col <col> of module <mod>"
         // Walk backwards from each location match to find the actual error description
         const lines = output.split("\n");
-        const semanticErrRe = /line\s+(\d+),\s*col\s+(\d+)\s+to\s+line\s+\d+,\s*col\s+\d+\s+of\s+module\s+(\S+)/;
+        const semanticErrRe =
+          /line\s+(\d+),\s*col\s+(\d+)\s+to\s+line\s+\d+,\s*col\s+\d+\s+of\s+module\s+(\S+)/;
         for (let i = 0; i < lines.length; i++) {
           match = semanticErrRe.exec(lines[i]);
           if (!match) continue;
@@ -67,7 +76,9 @@ export function registerTlaParse(server: McpServer): void {
           const locationStr = match[0];
           const moduleName = match[3];
           errors.push({
-            message: description ? `${description} — ${locationStr}` : locationStr,
+            message: description
+              ? `${description} — ${locationStr}`
+              : locationStr,
             location: {
               file: moduleToPath.get(moduleName) ?? moduleName,
               line: parseInt(match[1], 10),
@@ -86,7 +97,8 @@ export function registerTlaParse(server: McpServer): void {
         }
 
         // Look for "Encountered" error lines from SANY
-        const encounteredRe = /Encountered\s+"(.+?)"\s+at\s+line\s+(\d+),\s*column\s+(\d+)/g;
+        const encounteredRe =
+          /Encountered\s+"(.+?)"\s+at\s+line\s+(\d+),\s*column\s+(\d+)/g;
         while ((match = encounteredRe.exec(output)) !== null) {
           errors.push({
             message: `Encountered "${match[1]}" at line ${match[2]}, column ${match[3]}`,
@@ -112,7 +124,10 @@ export function registerTlaParse(server: McpServer): void {
 
         return formatToolResponse({
           status: valid ? "success" : "error",
-          valid, errors, modules_parsed: modulesParsed, raw_output: output,
+          valid,
+          errors,
+          modules_parsed: modulesParsed,
+          raw_output: output,
         });
       } catch (err: unknown) {
         return formatToolError(err);

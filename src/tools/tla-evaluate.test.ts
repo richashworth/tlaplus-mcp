@@ -79,11 +79,13 @@ describe("tla_evaluate", () => {
   });
 
   it("reports error with status=error on non-zero exit with no result", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: "",
-      stderr: "Error: Unknown operator\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: "",
+        stderr: "Error: Unknown operator\n",
+      }),
+    );
 
     const result = await handler({ expression: "bad expr" });
     const parsed = JSON.parse(result.content[0].text);
@@ -128,7 +130,10 @@ describe("tla_evaluate", () => {
   });
 
   it("rejects invalid import names with commas (injection attempt)", async () => {
-    const result = await handler({ expression: "1 + 2", imports: ["Integers, Naturals"] });
+    const result = await handler({
+      expression: "1 + 2",
+      imports: ["Integers, Naturals"],
+    });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("Invalid module name");
@@ -136,7 +141,10 @@ describe("tla_evaluate", () => {
   });
 
   it("rejects import names with special characters", async () => {
-    const result = await handler({ expression: "1", imports: ["Foo; DROP TABLE"] });
+    const result = await handler({
+      expression: "1",
+      imports: ["Foo; DROP TABLE"],
+    });
     expect(result.isError).toBe(true);
     expect(mockRunJava).not.toHaveBeenCalled();
   });

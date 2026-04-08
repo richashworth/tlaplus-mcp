@@ -60,7 +60,11 @@ describe("tlc_generate_trace_spec", () => {
   });
 
   it("passes custom cfg_file", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", monolith: true, cfg_file: "/other/Spec.cfg" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      monolith: true,
+      cfg_file: "/other/Spec.cfg",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-config");
     expect(args).toContain("/other/Spec.cfg");
@@ -72,19 +76,27 @@ describe("tlc_generate_trace_spec", () => {
   });
 
   it("reports status=success on successful generation", async () => {
-    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      monolith: true,
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.status).toBe("success");
     expect(parsed.success).toBe(true);
   });
 
   it("reports error on failure with no SpecTE", async () => {
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: "Error: Spec has no behaviors\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: "Error: Spec has no behaviors\n",
+      }),
+    );
 
-    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      monolith: true,
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.success).toBe(false);
     expect(parsed.status).toBe("error");
@@ -93,19 +105,27 @@ describe("tlc_generate_trace_spec", () => {
 
   it("reports failure when SpecTE.tla appears in error output but file does not exist", async () => {
     mockExistsSync.mockReturnValueOnce(true).mockReturnValue(false);
-    mockRunJava.mockResolvedValue(mockRunJavaResult({
-      exitCode: 1,
-      stdout: "Error: failed to generate SpecTE.tla\n",
-    }));
+    mockRunJava.mockResolvedValue(
+      mockRunJavaResult({
+        exitCode: 1,
+        stdout: "Error: failed to generate SpecTE.tla\n",
+      }),
+    );
 
-    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      monolith: true,
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.success).toBe(false);
   });
 
   it("catches thrown errors", async () => {
     mockRunJava.mockRejectedValue(new Error("boom"));
-    const result = await handler({ tla_file: "/specs/Spec.tla", monolith: true });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      monolith: true,
+    });
     expect(result.isError).toBe(true);
   });
 });

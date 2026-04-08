@@ -6,7 +6,9 @@ vi.mock("../lib/process.js", () => ({
   runJava: (...args: any[]) => mockRunJava(...args),
   sanitizeExtraArgs: (args: string[]) => {
     for (const a of args) {
-      if (["-dump", "-metadir", "-userfile", "-tlafile"].includes(a.toLowerCase())) {
+      if (
+        ["-dump", "-metadir", "-userfile", "-tlafile"].includes(a.toLowerCase())
+      ) {
         throw new Error(`Flag "${a}" is not allowed`);
       }
     }
@@ -15,7 +17,10 @@ vi.mock("../lib/process.js", () => ({
 }));
 
 vi.mock("../lib/schemas.js", () => ({
-  absolutePath: { describe: () => ({ _def: {} }), optional: () => ({ describe: () => ({ _def: {} }) }) } as any,
+  absolutePath: {
+    describe: () => ({ _def: {} }),
+    optional: () => ({ describe: () => ({ _def: {} }) }),
+  } as any,
 }));
 
 vi.mock("node:fs", () => ({
@@ -37,7 +42,8 @@ describe("tlc_check", () => {
     handler = captureToolHandler(registerTlcCheck);
     mockRunJava.mockResolvedValue(
       mockRunJavaResult({
-        stdout: "Model checking completed. No error has been found.\nFinished in 00:00:01",
+        stdout:
+          "Model checking completed. No error has been found.\nFinished in 00:00:01",
       }),
     );
   });
@@ -56,7 +62,10 @@ describe("tlc_check", () => {
   });
 
   it("uses custom cfg_file when provided", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", cfg_file: "/other/Custom.cfg" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      cfg_file: "/other/Custom.cfg",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("/other/Custom.cfg");
   });
@@ -161,7 +170,9 @@ describe("tlc_check", () => {
         tla_file: "/specs/Spec.tla",
         output_file: "/out/deep/dir/tlc.out",
       });
-      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith("/out/deep/dir", { recursive: true });
+      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith("/out/deep/dir", {
+        recursive: true,
+      });
     });
 
     it("returns raw_output inline when output_file is omitted", async () => {

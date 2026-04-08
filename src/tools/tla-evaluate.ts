@@ -9,18 +9,28 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { combineOutput, formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
+import {
+  combineOutput,
+  formatToolResponse,
+  formatToolError,
+} from "../lib/tool-helpers.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
   server.tool(
     "tla_evaluate",
     "Evaluate a constant TLA+ expression using TLC. Creates a temporary spec that prints the result of the expression.",
     {
-      expression: z.string().describe("TLA+ expression to evaluate (e.g., '1 + 2', '{1,2,3} \\\\union {4,5}')"),
+      expression: z
+        .string()
+        .describe(
+          "TLA+ expression to evaluate (e.g., '1 + 2', '{1,2,3} \\\\union {4,5}')",
+        ),
       imports: z
         .array(z.string())
         .optional()
-        .describe("Modules to EXTEND (e.g., ['Integers', 'Sequences']). Defaults to ['Integers', 'Sequences', 'FiniteSets', 'TLC']"),
+        .describe(
+          "Modules to EXTEND (e.g., ['Integers', 'Sequences']). Defaults to ['Integers', 'Sequences', 'FiniteSets', 'TLC']",
+        ),
     },
     async ({ expression, imports }) => {
       const modules = imports ?? ["Integers", "Sequences", "FiniteSets", "TLC"];
@@ -29,7 +39,11 @@ export function registerTlaEvaluate(server: McpServer): void {
       const validModuleName = /^[A-Za-z_][A-Za-z0-9_]*$/;
       for (const mod of modules) {
         if (!validModuleName.test(mod)) {
-          return formatToolError(new Error(`Invalid module name: "${mod}". Module names must match [A-Za-z_][A-Za-z0-9_]*.`));
+          return formatToolError(
+            new Error(
+              `Invalid module name: "${mod}". Module names must match [A-Za-z_][A-Za-z0-9_]*.`,
+            ),
+          );
         }
       }
       const id = randomUUID().replace(/-/g, "").slice(0, 12);
@@ -98,16 +112,31 @@ export function registerTlaEvaluate(server: McpServer): void {
         if (result.exitCode !== 0 && !evaluated) {
           // Look for TLC error messages
           const errMatch = output.match(/Error:\s*(.+?)(?:\n|$)/);
-          error = errMatch ? errMatch[1].trim() : `TLC exited with code ${result.exitCode}`;
+          error = errMatch
+            ? errMatch[1].trim()
+            : `TLC exited with code ${result.exitCode}`;
         }
 
-        return formatToolResponse({ status: error ? "error" : "success", result: evaluated, error, raw_output: output });
+        return formatToolResponse({
+          status: error ? "error" : "success",
+          result: evaluated,
+          error,
+          raw_output: output,
+        });
       } catch (err: unknown) {
         return formatToolError(err);
       } finally {
         // Clean up temp files
-        try { unlinkSync(tlaPath); } catch { /* ignore */ }
-        try { unlinkSync(cfgPath); } catch { /* ignore */ }
+        try {
+          unlinkSync(tlaPath);
+        } catch {
+          /* ignore */
+        }
+        try {
+          unlinkSync(cfgPath);
+        } catch {
+          /* ignore */
+        }
       }
     },
   );

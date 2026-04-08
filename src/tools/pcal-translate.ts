@@ -7,18 +7,27 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  combineOutput,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 export function registerPcalTranslate(server: McpServer): void {
   server.tool(
     "pcal_translate",
     "Translate PlusCal algorithm embedded in a TLA+ file to TLA+. Modifies the .tla file in-place by inserting/updating the TLA+ translation between the \\* BEGIN TRANSLATION and \\* END TRANSLATION markers.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla file containing PlusCal code"),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla file containing PlusCal code",
+      ),
       fairness: z
         .enum(["wf", "sf", "wfNext", "nof"])
         .default("nof")
-        .describe("Fairness condition: wf (weak), sf (strong), wfNext (weak on Next), nof (none)"),
+        .describe(
+          "Fairness condition: wf (weak), sf (strong), wfNext (weak on Next), nof (none)",
+        ),
       termination: z
         .boolean()
         .default(false)
@@ -71,7 +80,8 @@ export function registerPcalTranslate(server: McpServer): void {
         const labelsAdded: string[] = [];
 
         // Parse errors
-        const errorRe = /(?:Unrecoverable error|PlusCal error|error):?\s*(.+)/gi;
+        const errorRe =
+          /(?:Unrecoverable error|PlusCal error|error):?\s*(.+)/gi;
         let match: RegExpExecArray | null;
         while ((match = errorRe.exec(output)) !== null) {
           errors.push(match[1].trim());

@@ -53,7 +53,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 24.80-b11, mixed mode)`;
 
   it("throws on unparseable output", () => {
     expect(() => parseJavaVersion("not a version string")).toThrow(
-      "Could not parse Java version"
+      "Could not parse Java version",
     );
   });
 

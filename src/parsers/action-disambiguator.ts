@@ -22,7 +22,7 @@ export interface DisambiguatedTransition {
 
 function disambiguateGroup(
   action: string,
-  edgeDiffs: Array<[TransitionEdge, Array<[string, string, string]>]>
+  edgeDiffs: Array<[TransitionEdge, Array<[string, string, string]>]>,
 ): DisambiguatedTransition[] {
   // Collect all diff keys across edges
   const allKeys: string[] = [];
@@ -81,7 +81,7 @@ function disambiguateGroup(
  */
 export function disambiguateActions(
   states: Record<string, { vars: VarMap }>,
-  edges: TransitionEdge[]
+  edges: TransitionEdge[],
 ): Record<string, DisambiguatedTransition[]> {
   // Group edges by source
   const bySource: Record<string, TransitionEdge[]> = {};
@@ -111,7 +111,9 @@ export function disambiguateActions(
       } else {
         // Need disambiguation
         const srcVars = states[src].vars;
-        const edgeDiffs: Array<[TransitionEdge, Array<[string, string, string]>]> = [];
+        const edgeDiffs: Array<
+          [TransitionEdge, Array<[string, string, string]>]
+        > = [];
         for (const e of group) {
           const tgtVars = states[e.target].vars;
           const diffs = compactDiff(srcVars, tgtVars);

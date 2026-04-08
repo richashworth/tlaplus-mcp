@@ -7,22 +7,23 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { execFileSync } from "node:child_process";
 import { absolutePath } from "../lib/schemas.js";
-import { combineOutput, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  combineOutput,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 export function registerTlaTex(server: McpServer): void {
   server.tool(
     "tla_tex",
     "Typeset a TLA+ specification into a PDF or DVI file using TLATeX. Requires a LaTeX installation (pdflatex or latex) to be available.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla file to typeset"),
-      shade: z
-        .boolean()
-        .default(false)
-        .describe("Add shading to comments"),
-      number: z
-        .boolean()
-        .default(false)
-        .describe("Add line numbers"),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla file to typeset",
+      ),
+      shade: z.boolean().default(false).describe("Add shading to comments"),
+      number: z.boolean().default(false).describe("Add line numbers"),
       no_pcal_shade: z
         .boolean()
         .default(false)
@@ -36,7 +37,14 @@ export function registerTlaTex(server: McpServer): void {
         .default("pdf")
         .describe("Output format"),
     },
-    async ({ tla_file, shade, number, no_pcal_shade, gray_level, output_format }) => {
+    async ({
+      tla_file,
+      shade,
+      number,
+      no_pcal_shade,
+      gray_level,
+      output_format,
+    }) => {
       try {
         validateFileExists(tla_file, "TLA+ file");
         // Check for LaTeX availability
@@ -45,7 +53,9 @@ export function registerTlaTex(server: McpServer): void {
           execFileSync(latexCmd, ["--version"], { stdio: "pipe" });
         } catch {
           return formatToolError(
-            new Error(`${latexCmd} not found on PATH. Install a LaTeX distribution (e.g., texlive or mactex) to use TLATeX.`),
+            new Error(
+              `${latexCmd} not found on PATH. Install a LaTeX distribution (e.g., texlive or mactex) to use TLATeX.`,
+            ),
           );
         }
 
@@ -83,8 +93,12 @@ export function registerTlaTex(server: McpServer): void {
 
         let error: string | null = null;
         if (!success) {
-          const errMatch = output.match(/(?:Error|Exception|error):\s*(.+?)(?:\n|$)/i);
-          error = errMatch ? errMatch[1].trim() : `TLATeX exited with code ${result.exitCode}`;
+          const errMatch = output.match(
+            /(?:Error|Exception|error):\s*(.+?)(?:\n|$)/i,
+          );
+          error = errMatch
+            ? errMatch[1].trim()
+            : `TLATeX exited with code ${result.exitCode}`;
         }
 
         return formatToolResponse({

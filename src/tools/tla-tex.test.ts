@@ -32,18 +32,45 @@ describe("tla_tex", () => {
   });
 
   it("checks pdflatex availability for pdf format", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
-    expect(mockExecFileSync).toHaveBeenCalledWith("pdflatex", ["--version"], { stdio: "pipe" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
+    expect(mockExecFileSync).toHaveBeenCalledWith("pdflatex", ["--version"], {
+      stdio: "pipe",
+    });
   });
 
   it("checks latex availability for dvi format", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "dvi" });
-    expect(mockExecFileSync).toHaveBeenCalledWith("latex", ["--version"], { stdio: "pipe" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "dvi",
+    });
+    expect(mockExecFileSync).toHaveBeenCalledWith("latex", ["--version"], {
+      stdio: "pipe",
+    });
   });
 
   it("returns error with status=error when latex not found", async () => {
-    mockExecFileSync.mockImplementation(() => { throw new Error("not found"); });
-    const result = await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error("not found");
+    });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("pdflatex not found");
@@ -51,52 +78,108 @@ describe("tla_tex", () => {
   });
 
   it("adds -shade flag", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: true, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: true,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-shade");
   });
 
   it("adds -number flag", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: true, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: true,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-number");
   });
 
   it("adds -noPcalShade flag", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: true, gray_level: 0.85, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: true,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-noPcalShade");
   });
 
   it("adds -grayLevel when non-default", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.5, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.5,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-grayLevel");
     expect(args).toContain("0.5");
   });
 
   it("omits -grayLevel for default 0.85", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).not.toContain("-grayLevel");
   });
 
   it("adds -latexCommand pdflatex for pdf output", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-latexCommand");
     expect(args).toContain("pdflatex");
   });
 
   it("returns output_file with .pdf extension and status=success", async () => {
-    const result = await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "pdf" });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "pdf",
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.output_file).toBe("/specs/Spec.pdf");
     expect(parsed.status).toBe("success");
   });
 
   it("returns output_file with .dvi extension", async () => {
-    const result = await handler({ tla_file: "/specs/Spec.tla", shade: false, number: false, no_pcal_shade: false, gray_level: 0.85, output_format: "dvi" });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      shade: false,
+      number: false,
+      no_pcal_shade: false,
+      gray_level: 0.85,
+      output_format: "dvi",
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.output_file).toBe("/specs/Spec.dvi");
   });

@@ -10,18 +10,42 @@ import { tmpdir } from "node:os";
 import { runJava, sanitizeExtraArgs } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { defaultCfgPath, combineOutput, deriveStatus, formatToolResponse, formatToolError, validateFileExists } from "../lib/tool-helpers.js";
+import {
+  defaultCfgPath,
+  combineOutput,
+  deriveStatus,
+  formatToolResponse,
+  formatToolError,
+  validateFileExists,
+} from "../lib/tool-helpers.js";
 
 export function registerTlcCoverage(server: McpServer): void {
   server.tool(
     "tlc_coverage",
     "Run TLC model checker with action coverage reporting. Shows how many times each action was taken and how many distinct states it produced, helping identify under-explored parts of the spec.",
     {
-      tla_file: absolutePath.describe("Absolute path to the .tla specification file"),
-      cfg_file: z.string().optional().describe("Path to .cfg file (defaults to same basename as tla_file with .cfg extension)"),
-      interval_minutes: z.number().positive().default(1).describe("Coverage reporting interval in minutes (default 1)"),
-      workers: z.union([z.number().int().positive(), z.literal("auto")]).optional().describe("Number of worker threads, or 'auto' for all cores"),
-      extra_args: z.array(z.string()).optional().describe("Additional raw arguments to pass to TLC"),
+      tla_file: absolutePath.describe(
+        "Absolute path to the .tla specification file",
+      ),
+      cfg_file: z
+        .string()
+        .optional()
+        .describe(
+          "Path to .cfg file (defaults to same basename as tla_file with .cfg extension)",
+        ),
+      interval_minutes: z
+        .number()
+        .positive()
+        .default(1)
+        .describe("Coverage reporting interval in minutes (default 1)"),
+      workers: z
+        .union([z.number().int().positive(), z.literal("auto")])
+        .optional()
+        .describe("Number of worker threads, or 'auto' for all cores"),
+      extra_args: z
+        .array(z.string())
+        .optional()
+        .describe("Additional raw arguments to pass to TLC"),
     },
     async (params) => {
       try {
@@ -64,13 +88,19 @@ export function registerTlcCoverage(server: McpServer): void {
             cwd,
           });
         } finally {
-          try { rmSync(metaDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+          try {
+            rmSync(metaDir, { recursive: true, force: true });
+          } catch {
+            /* best-effort */
+          }
         }
 
         const output = combineOutput(result);
         const parsed = parseTlcOutput(output);
         if (result.timedOut) {
-          parsed.errors.push({ message: "TLC process killed: timeout exceeded" });
+          parsed.errors.push({
+            message: "TLC process killed: timeout exceeded",
+          });
         }
         const status = deriveStatus(parsed, result.timedOut);
 

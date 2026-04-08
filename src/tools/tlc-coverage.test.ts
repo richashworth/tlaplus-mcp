@@ -27,7 +27,8 @@ describe("tlc_coverage", () => {
     handler = captureToolHandler(registerTlcCoverage);
     mockRunJava.mockResolvedValue(
       mockRunJavaResult({
-        stdout: "Model checking completed. No error has been found.\nFinished in 00:00:01",
+        stdout:
+          "Model checking completed. No error has been found.\nFinished in 00:00:01",
       }),
     );
   });
@@ -46,14 +47,21 @@ describe("tlc_coverage", () => {
   });
 
   it("passes workers flag", async () => {
-    await handler({ tla_file: "/specs/Spec.tla", interval_minutes: 1, workers: "auto" });
+    await handler({
+      tla_file: "/specs/Spec.tla",
+      interval_minutes: 1,
+      workers: "auto",
+    });
     const args = mockRunJava.mock.calls[0][0].args;
     expect(args).toContain("-workers");
     expect(args).toContain("auto");
   });
 
   it("returns coverage in response", async () => {
-    const result = await handler({ tla_file: "/specs/Spec.tla", interval_minutes: 1 });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      interval_minutes: 1,
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed).toHaveProperty("coverage");
     expect(parsed).toHaveProperty("status", "success");
@@ -67,12 +75,17 @@ describe("tlc_coverage", () => {
         exitCode: 1,
       }),
     );
-    const result = await handler({ tla_file: "/specs/Spec.tla", interval_minutes: 1 });
+    const result = await handler({
+      tla_file: "/specs/Spec.tla",
+      interval_minutes: 1,
+    });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.status).toBe("error");
     expect(parsed.errors).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ message: "TLC process killed: timeout exceeded" }),
+        expect.objectContaining({
+          message: "TLC process killed: timeout exceeded",
+        }),
       ]),
     );
   });

@@ -13,7 +13,10 @@ export interface Config {
   workspace: string;
 }
 
-function parseIntOrDefault(value: string | undefined, defaultValue: number): number {
+function parseIntOrDefault(
+  value: string | undefined,
+  defaultValue: number,
+): number {
   const parsed = parseInt(value ?? String(defaultValue), 10);
   return Number.isNaN(parsed) ? defaultValue : parsed;
 }
