@@ -6,7 +6,7 @@ MCP server that exposes the TLA+ toolchain (TLC, SANY, PlusCal, TLATeX) as struc
 Any MCP client               tlaplus-mcp                    TLA+ toolchain
 ┌────────────┐           ┌──────────────────┐           ┌──────────────────┐
 │ Claude Code│           │  tla_parse       │           │  TLC (checker)   │
-│ Cursor     │──MCP────▶│  tlc_check       │──Java───▶│  SANY (parser)   │
+│ Cursor     │───MCP────▶│  tlc_check       │───Java───▶│  SANY (parser)   │
 │ custom app │  (stdio)  │  tlc_simulate    │           │  PlusCal         │
 └────────────┘           │  tla_evaluate    │           │  TLATeX          │
                          │  pcal_translate  │           └──────────────────┘
