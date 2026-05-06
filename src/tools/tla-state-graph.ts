@@ -67,7 +67,7 @@ export function registerTlaStateGraph(server: McpServer): void {
       output_file: absolutePath
         .optional()
         .describe(
-          "Write JSON to this file instead of returning it inline (json format only). Response will contain a compact summary.",
+          "Write JSON to this file (REQUIRED for json format) instead of returning it inline. Response will contain a compact summary. Must be omitted for dot/structured formats.",
         ),
     },
     async ({
@@ -84,6 +84,12 @@ export function registerTlaStateGraph(server: McpServer): void {
         if (output_file && format !== "json") {
           throw new Error("output_file is only supported with json format");
         }
+        // output_file is required for json format (avoids flooding agent context with full graphs)
+        if (format === "json" && !output_file) {
+          throw new Error("output_file is required for json format");
+        }
+        // After the checks above, output_file is guaranteed defined whenever format === "json".
+        const jsonOutputFile = output_file as string;
 
         // -- traces_only mode: build graph from TLC output alone ---------------
         if (traces_only) {
@@ -153,7 +159,7 @@ export function registerTlaStateGraph(server: McpServer): void {
               violations: traceGraph.violations,
               happyPaths,
             },
-            output_file,
+            jsonOutputFile,
           );
         }
 
@@ -254,7 +260,7 @@ export function registerTlaStateGraph(server: McpServer): void {
             violations,
             happyPaths,
           },
-          output_file,
+          jsonOutputFile,
         );
       } catch (err: unknown) {
         return formatToolError(err);
@@ -277,14 +283,12 @@ interface StateGraphData {
   happyPaths: HappyPath[];
 }
 
-function buildJsonResponse(data: StateGraphData, outputFile?: string) {
-  if (!outputFile) {
-    return formatToolResponse(data);
-  }
-
-  // Write full JSON to file, return compact summary
+function buildJsonResponse(data: StateGraphData, outputFile: string) {
+  // Write full JSON to file, return compact summary.
+  // Pretty-print so consumers can use line-ranged Read calls without loading
+  // the entire graph (verifiers paginate by line).
   fs.mkdirSync(dirname(outputFile), { recursive: true });
-  fs.writeFileSync(outputFile, JSON.stringify(data), "utf-8");
+  fs.writeFileSync(outputFile, JSON.stringify(data, null, 2), "utf-8");
 
   const sampleState = data.states[data.initialStateId]
     ? { vars: data.states[data.initialStateId].vars }

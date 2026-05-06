@@ -12,6 +12,7 @@ import {
   formatToolResponse,
   formatToolError,
   validateFileExists,
+  writeOrInline,
 } from "../lib/tool-helpers.js";
 
 export function registerPcalTranslate(server: McpServer): void {
@@ -45,8 +46,21 @@ export function registerPcalTranslate(server: McpServer): void {
         .int()
         .default(78)
         .describe("Line width for the translation output"),
+      output_file: absolutePath
+        .optional()
+        .describe(
+          "Optional. If provided, raw pcal.trans output is written to this file and the response contains output_file instead of raw_output. (Note: this is the raw TRANSLATOR output — the translated TLA+ spec is always written in-place to tla_file, reported as translated_file.)",
+        ),
     },
-    async ({ tla_file, fairness, termination, no_cfg, label, line_width }) => {
+    async ({
+      tla_file,
+      fairness,
+      termination,
+      no_cfg,
+      label,
+      line_width,
+      output_file,
+    }) => {
       try {
         validateFileExists(tla_file, "TLA+ file");
         const args: string[] = [];
@@ -95,16 +109,16 @@ export function registerPcalTranslate(server: McpServer): void {
 
         const success = result.exitCode === 0 && errors.length === 0;
 
-        // Determine output file (same as input for in-place translation)
-        const outputFile = tla_file;
-
         return formatToolResponse({
           status: success ? "success" : "error",
           success,
           errors,
           labels_added: labelsAdded,
-          output_file: outputFile,
-          raw_output: output,
+          // PlusCal translation is in-place: the translated TLA+ spec is
+          // written back to tla_file. Reporting it explicitly so callers
+          // don't have to remember the in-place semantics.
+          translated_file: tla_file,
+          ...writeOrInline(output, output_file),
         });
       } catch (err: unknown) {
         return formatToolError(err);

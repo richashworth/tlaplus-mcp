@@ -75,21 +75,27 @@ describe("tla_state_graph", () => {
     expect(parsed.edges[0].action).toBe("Next");
   });
 
-  it("returns json format with transitions and status=success", async () => {
+  it("writes json format with transitions to output_file and returns status=success summary", async () => {
     vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
     const result = await handler({
       dot_file: "/specs/states.dot",
       format: "json",
+      output_file: "/out/graph.json",
     });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.status).toBe("success");
-    expect(parsed).toHaveProperty("states");
-    expect(parsed).toHaveProperty("transitions");
-    expect(parsed).toHaveProperty("invariants");
-    expect(parsed).toHaveProperty("violations");
+    expect(parsed.output_file).toBe("/out/graph.json");
     expect(parsed.invariants).toEqual([]);
-    expect(parsed.violations).toEqual([]);
+    expect(parsed.violation_count).toBe(0);
+
+    // The written file should contain the full structured data.
+    const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+    const writtenData = JSON.parse(writeCall[1] as string);
+    expect(writtenData).toHaveProperty("states");
+    expect(writtenData).toHaveProperty("transitions");
+    expect(writtenData).toHaveProperty("invariants");
+    expect(writtenData).toHaveProperty("violations");
   });
 
   it("validates dot_file exists", async () => {
@@ -114,6 +120,7 @@ describe("tla_state_graph", () => {
       dot_file: "/specs/states.dot",
       cfg_file: "/specs/missing.cfg",
       format: "json",
+      output_file: "/out/graph.json",
     });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
@@ -130,6 +137,7 @@ describe("tla_state_graph", () => {
       dot_file: "/specs/states.dot",
       tlc_output_file: "/specs/missing.out",
       format: "json",
+      output_file: "/out/graph.json",
     });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
@@ -145,6 +153,7 @@ describe("tla_state_graph", () => {
       dot_file: "/specs/states.dot",
       cfg_file: "/specs/Spec.cfg",
       format: "json",
+      output_file: "/out/graph.json",
     });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.invariants).toEqual(
@@ -152,23 +161,28 @@ describe("tla_state_graph", () => {
     );
   });
 
-  it("returns partial=false and happyPaths in json format", async () => {
+  it("returns partial=false and happyPaths in json format summary", async () => {
     vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
 
     const result = await handler({
       dot_file: "/specs/states.dot",
       format: "json",
+      output_file: "/out/graph.json",
     });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.partial).toBe(false);
-    expect(parsed).toHaveProperty("happyPaths");
-    expect(Array.isArray(parsed.happyPaths)).toBe(true);
-    // The TLC_DOT graph has 1->2 with action "Next", so there should be a terminal path
-    expect(parsed.happyPaths.length).toBeGreaterThanOrEqual(1);
-    expect(parsed.happyPaths[0].trace[0].stateId).toBe("1");
+    expect(parsed.happy_path_count).toBeGreaterThanOrEqual(1);
+
+    // Full happyPaths data is in the written file.
+    const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+    const writtenData = JSON.parse(writeCall[1] as string);
+    expect(writtenData).toHaveProperty("happyPaths");
+    expect(Array.isArray(writtenData.happyPaths)).toBe(true);
+    expect(writtenData.happyPaths.length).toBeGreaterThanOrEqual(1);
+    expect(writtenData.happyPaths[0].trace[0].stateId).toBe("1");
   });
 
-  it("returns traces_only graph with partial=true from TLC output", async () => {
+  it("writes traces_only graph with partial=true from TLC output", async () => {
     const tlcOutput = `Error: Invariant TypeOK is violated.
 State 1: <Init line 5, col 1 of module Spec>
 /\\ x = 1
@@ -181,21 +195,27 @@ State 2: <Next line 10, col 1 of module Spec>
       format: "json",
       traces_only: true,
       tlc_output: tlcOutput,
+      output_file: "/out/traces.json",
     });
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.status).toBe("success");
     expect(parsed.partial).toBe(true);
-    expect(parsed.states).toHaveProperty("t1");
-    expect(parsed.states).toHaveProperty("t2");
-    expect(parsed.violations).toHaveLength(1);
-    expect(parsed.violations[0].type).toBe("invariant");
-    expect(parsed).toHaveProperty("happyPaths");
+    expect(parsed.violation_count).toBe(1);
+
+    const writeCall = vi.mocked(fs.writeFileSync).mock.calls[0];
+    const writtenData = JSON.parse(writeCall[1] as string);
+    expect(writtenData.states).toHaveProperty("t1");
+    expect(writtenData.states).toHaveProperty("t2");
+    expect(writtenData.violations).toHaveLength(1);
+    expect(writtenData.violations[0].type).toBe("invariant");
+    expect(writtenData).toHaveProperty("happyPaths");
   });
 
   it("rejects traces_only without TLC output", async () => {
     const result = await handler({
       format: "json",
       traces_only: true,
+      output_file: "/out/traces.json",
     });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
@@ -216,10 +236,25 @@ State 2: <Next line 10, col 1 of module Spec>
   });
 
   it("requires dot_file when traces_only is false", async () => {
-    const result = await handler({ format: "json" });
+    const result = await handler({
+      format: "json",
+      output_file: "/out/graph.json",
+    });
     expect(result.isError).toBe(true);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toContain("dot_file is required");
+  });
+
+  it("rejects json format when output_file is omitted", async () => {
+    vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
+
+    const result = await handler({
+      dot_file: "/specs/states.dot",
+      format: "json",
+    });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed.error).toContain("output_file is required for json format");
   });
 
   describe("output_file", () => {
@@ -247,20 +282,6 @@ State 2: <Next line 10, col 1 of module Spec>
         expect.any(String),
         "utf-8",
       );
-    });
-
-    it("returns full response when output_file is omitted", async () => {
-      vi.mocked(fs.readFileSync).mockReturnValue(TLC_DOT);
-
-      const result = await handler({
-        dot_file: "/specs/states.dot",
-        format: "json",
-      });
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.states).toBeDefined();
-      expect(parsed.transitions).toBeDefined();
-      expect(parsed.output_file).toBeUndefined();
-      expect(vi.mocked(fs.writeFileSync)).not.toHaveBeenCalled();
     });
 
     it("rejects output_file with non-json format", async () => {

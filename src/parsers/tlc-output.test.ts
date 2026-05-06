@@ -5,6 +5,8 @@ import {
   parseTlcMessages,
   extractMessageBody,
   buildGraphFromTraces,
+  dedupeViolations,
+  type TlcViolation,
 } from "./tlc-output.js";
 
 describe("parseTlcOutput", () => {
@@ -603,5 +605,172 @@ State 2: <Next line 10, col 1 of module Spec>
     expect(graph.states["t1"].label).toContain("2 :> 2");
     // State 2 should also be fully parsed
     expect(graph.states["t2"].vars).toHaveProperty("y");
+  });
+});
+
+describe("dedupeViolations", () => {
+  it("keeps the violation with the fewest trace states per property name", () => {
+    const violations: TlcViolation[] = [
+      {
+        type: "invariant",
+        name: "TypeOK",
+        summary: "TypeOK violated (long)",
+        traceLength: 5,
+      },
+      {
+        type: "invariant",
+        name: "TypeOK",
+        summary: "TypeOK violated (short)",
+        traceLength: 2,
+      },
+      {
+        type: "invariant",
+        name: "TypeOK",
+        summary: "TypeOK violated (medium)",
+        traceLength: 3,
+      },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(1);
+    expect(result[0].traceLength).toBe(2);
+    expect(result[0].summary).toBe("TypeOK violated (short)");
+  });
+
+  it("does not dedup deadlocks against each other", () => {
+    const violations: TlcViolation[] = [
+      { type: "deadlock", summary: "Deadlock at A", traceLength: 2 },
+      { type: "deadlock", summary: "Deadlock at B", traceLength: 4 },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(2);
+  });
+
+  it("keeps distinct property names independently", () => {
+    const violations: TlcViolation[] = [
+      {
+        type: "invariant",
+        name: "Inv1",
+        summary: "Inv1 violated",
+        traceLength: 5,
+      },
+      {
+        type: "invariant",
+        name: "Inv1",
+        summary: "Inv1 violated again",
+        traceLength: 3,
+      },
+      {
+        type: "temporal",
+        name: "Liveness",
+        summary: "Liveness violated",
+        traceLength: 7,
+      },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(2);
+    const inv1 = result.find((v) => v.name === "Inv1");
+    expect(inv1?.traceLength).toBe(3);
+    const liveness = result.find((v) => v.name === "Liveness");
+    expect(liveness?.traceLength).toBe(7);
+  });
+
+  it("treats invariant and temporal with the same name as distinct", () => {
+    const violations: TlcViolation[] = [
+      {
+        type: "invariant",
+        name: "P",
+        summary: "Invariant P violated",
+        traceLength: 4,
+      },
+      {
+        type: "temporal",
+        name: "P",
+        summary: "Temporal P violated",
+        traceLength: 2,
+      },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(2);
+  });
+
+  it("keeps unnamed non-deadlock violations individually", () => {
+    const violations: TlcViolation[] = [
+      { type: "invariant", summary: "Assertion failure A", traceLength: 3 },
+      { type: "invariant", summary: "Assertion failure B", traceLength: 5 },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(2);
+  });
+
+  it("preserves order of first occurrence across groups", () => {
+    const violations: TlcViolation[] = [
+      {
+        type: "invariant",
+        name: "Inv2",
+        summary: "Inv2 v1",
+        traceLength: 4,
+      },
+      {
+        type: "invariant",
+        name: "Inv1",
+        summary: "Inv1 v1",
+        traceLength: 5,
+      },
+      {
+        type: "invariant",
+        name: "Inv2",
+        summary: "Inv2 v2",
+        traceLength: 2,
+      },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe("Inv2");
+    expect(result[0].traceLength).toBe(2);
+    expect(result[1].name).toBe("Inv1");
+  });
+
+  it("falls back to keeping the entry without traceLength last", () => {
+    const violations: TlcViolation[] = [
+      { type: "invariant", name: "X", summary: "X v1" },
+      {
+        type: "invariant",
+        name: "X",
+        summary: "X v2",
+        traceLength: 3,
+      },
+    ];
+    const result = dedupeViolations(violations);
+    expect(result).toHaveLength(1);
+    expect(result[0].traceLength).toBe(3);
+  });
+
+  it("integration: parseTlcOutput dedupes duplicate invariant violations", () => {
+    // Simulate -continue output with two violations of the same invariant.
+    const output = `Error: Invariant TypeOK is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 1
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 2
+
+State 3: <Next line 10, col 1 of module Spec>
+/\\ x = 3
+
+State 4: <Next line 10, col 1 of module Spec>
+/\\ x = 4
+
+Error: Invariant TypeOK is violated.
+State 1: <Init line 5, col 1 of module Spec>
+/\\ x = 0
+
+State 2: <Next line 10, col 1 of module Spec>
+/\\ x = 99
+`;
+    const result = parseTlcOutput(output);
+    // Two raw violations collapse to the shorter trace (2 states).
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0].name).toBe("TypeOK");
+    expect(result.violations[0].traceLength).toBe(2);
   });
 });

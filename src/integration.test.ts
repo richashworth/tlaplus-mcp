@@ -13,6 +13,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "./server.js";
 
 // -- Test helpers -------------------------------------------------------------
@@ -45,20 +48,26 @@ function getResultText(
 }
 
 /** Call a tool with a non-absolute path and assert schema validation rejects it. */
-async function expectAbsolutePathRequired(toolName: string) {
+async function expectAbsolutePathRequired(
+  toolName: string,
+  extraArgs: Record<string, unknown> = {},
+) {
   const result = await client.callTool({
     name: toolName,
-    arguments: { tla_file: "relative/Spec.tla" },
+    arguments: { tla_file: "relative/Spec.tla", ...extraArgs },
   });
   expect(result.isError).toBe(true);
   expect(getResultText(result)).toContain("Path must be absolute");
 }
 
 /** Call a tool with a nonexistent absolute path and assert file-not-found error. */
-async function expectFileNotFound(toolName: string) {
+async function expectFileNotFound(
+  toolName: string,
+  extraArgs: Record<string, unknown> = {},
+) {
   const result = await client.callTool({
     name: toolName,
-    arguments: { tla_file: "/nonexistent/Spec.tla" },
+    arguments: { tla_file: "/nonexistent/Spec.tla", ...extraArgs },
   });
   expect(result.isError).toBe(true);
   const parsed = parseToolResult(result);
@@ -69,16 +78,33 @@ async function expectFileNotFound(toolName: string) {
 
 describe("MCP server integration", () => {
   let server: Awaited<ReturnType<typeof createServer>>;
+  let tempDir: string;
+
+  /** Allocate a temp output_file path used by json-format tla_state_graph calls. */
+  function tempOutputFile(name = "graph.json"): string {
+    return join(tempDir, `${Math.random().toString(36).slice(2)}-${name}`);
+  }
+
+  /** Read the JSON written by tla_state_graph at the given path. */
+  function readOutputFile(path: string): any {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  }
 
   beforeAll(async () => {
     const setup = await setupClientServer();
     client = setup.client;
     server = setup.server;
+    tempDir = mkdtempSync(join(tmpdir(), "tlaplus-mcp-it-"));
   });
 
   afterAll(async () => {
     await client.close();
     await server.close();
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      /* best-effort */
+    }
   });
 
   // -- Tool registration ------------------------------------------------------
@@ -171,17 +197,23 @@ Back to state 2
 `;
 
     it("returns partial=true with synthetic state IDs", async () => {
+      const outputFile = tempOutputFile();
       const result = await client.callTool({
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
           tlc_output: TLC_OUTPUT_INVARIANT,
+          output_file: outputFile,
         },
       });
 
-      const parsed = parseToolResult(result);
-      expect(parsed.status).toBe("success");
-      expect(parsed.partial).toBe(true);
+      const summary = parseToolResult(result);
+      expect(summary.status).toBe("success");
+      expect(summary.partial).toBe(true);
+      expect(summary.state_count).toBe(2);
+      expect(summary.initialStateId).toBe("t1");
+
+      const parsed = readOutputFile(outputFile);
       expect(parsed.states).toHaveProperty("t1");
       expect(parsed.states).toHaveProperty("t2");
       expect(parsed.states.t1.vars).toEqual({ x: 1, y: 2 });
@@ -190,15 +222,18 @@ Back to state 2
     });
 
     it("includes violations with synthetic state IDs", async () => {
+      const outputFile = tempOutputFile();
       const result = await client.callTool({
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
           tlc_output: TLC_OUTPUT_INVARIANT,
+          output_file: outputFile,
         },
       });
+      expect(parseToolResult(result).violation_count).toBe(1);
 
-      const parsed = parseToolResult(result);
+      const parsed = readOutputFile(outputFile);
       expect(parsed.violations).toHaveLength(1);
       expect(parsed.violations[0].type).toBe("invariant");
       expect(parsed.violations[0].invariant).toBe("TypeOK");
@@ -207,45 +242,54 @@ Back to state 2
     });
 
     it("includes transitions between trace states", async () => {
-      const result = await client.callTool({
+      const outputFile = tempOutputFile();
+      await client.callTool({
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
           tlc_output: TLC_OUTPUT_INVARIANT,
+          output_file: outputFile,
         },
       });
 
-      const parsed = parseToolResult(result);
+      const parsed = readOutputFile(outputFile);
       expect(parsed.transitions).toHaveProperty("t1");
       expect(parsed.transitions.t1).toHaveLength(1);
       expect(parsed.transitions.t1[0].target).toBe("t2");
     });
 
     it("includes happyPaths array", async () => {
-      const result = await client.callTool({
+      const outputFile = tempOutputFile();
+      await client.callTool({
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
           tlc_output: TLC_OUTPUT_INVARIANT,
+          output_file: outputFile,
         },
       });
 
-      const parsed = parseToolResult(result);
+      const parsed = readOutputFile(outputFile);
       expect(parsed).toHaveProperty("happyPaths");
       expect(Array.isArray(parsed.happyPaths)).toBe(true);
     });
 
     it("handles temporal violation with lasso", async () => {
+      const outputFile = tempOutputFile();
       const result = await client.callTool({
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
           tlc_output: TLC_OUTPUT_LASSO,
+          output_file: outputFile,
         },
       });
 
-      const parsed = parseToolResult(result);
-      expect(parsed.partial).toBe(true);
+      const summary = parseToolResult(result);
+      expect(summary.partial).toBe(true);
+      expect(summary.violation_count).toBe(1);
+
+      const parsed = readOutputFile(outputFile);
       expect(parsed.violations).toHaveLength(1);
       expect(parsed.violations[0].type).toBe("temporal");
       expect(parsed.violations[0].property).toBe("Liveness");
@@ -259,6 +303,7 @@ Back to state 2
         name: "tla_state_graph",
         arguments: {
           traces_only: true,
+          output_file: tempOutputFile(),
         },
       });
 
@@ -283,13 +328,27 @@ Back to state 2
         "traces_only mode only supports json format",
       );
     });
+
+    it("errors when output_file is omitted in json format", async () => {
+      const result = await client.callTool({
+        name: "tla_state_graph",
+        arguments: {
+          traces_only: true,
+          tlc_output: TLC_OUTPUT_INVARIANT,
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      const parsed = parseToolResult(result);
+      expect(parsed.error).toContain("output_file is required for json format");
+    });
   });
 
   describe("tla_state_graph — normal mode errors", () => {
     it("errors when dot_file is missing", async () => {
       const result = await client.callTool({
         name: "tla_state_graph",
-        arguments: {},
+        arguments: { output_file: tempOutputFile() },
       });
 
       expect(result.isError).toBe(true);
@@ -302,6 +361,7 @@ Back to state 2
         name: "tla_state_graph",
         arguments: {
           dot_file: "/nonexistent/path/states.dot",
+          output_file: tempOutputFile(),
         },
       });
 
@@ -315,9 +375,18 @@ Back to state 2
 
   describe("tlc_check", () => {
     it("errors when tla_file does not exist", () =>
-      expectFileNotFound("tlc_check"));
+      expectFileNotFound("tlc_check", { output_file: "/tmp/tlc.out" }));
     it("rejects non-absolute tla_file path", () =>
-      expectAbsolutePathRequired("tlc_check"));
+      expectAbsolutePathRequired("tlc_check", {
+        output_file: "/tmp/tlc.out",
+      }));
+    it("rejects when output_file is missing", async () => {
+      const result = await client.callTool({
+        name: "tlc_check",
+        arguments: { tla_file: "/some/Spec.tla" },
+      });
+      expect(result.isError).toBe(true);
+    });
   });
 
   // -- tlc_simulate -----------------------------------------------------------

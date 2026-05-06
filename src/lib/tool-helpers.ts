@@ -8,7 +8,8 @@
  * - formatting tool responses and errors
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { RunJavaResult } from "./process.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
 
@@ -44,6 +45,25 @@ export function formatToolResponse(data: object) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(data) }],
   };
+}
+
+/**
+ * If `outputFile` is provided, write `output` to it (creating parent dirs)
+ * and return `{ output_file }`. Otherwise return `{ raw_output: output }`.
+ *
+ * Used by tools that always have a `raw_output` to share but want to give
+ * the caller the option of redirecting it to a file to avoid context flooding.
+ */
+export function writeOrInline(
+  output: string,
+  outputFile: string | undefined,
+): { output_file: string } | { raw_output: string } {
+  if (outputFile) {
+    mkdirSync(dirname(outputFile), { recursive: true });
+    writeFileSync(outputFile, output, "utf-8");
+    return { output_file: outputFile };
+  }
+  return { raw_output: output };
 }
 
 /** Format an error as an MCP tool error response. */

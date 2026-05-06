@@ -11,6 +11,7 @@ import {
   formatToolResponse,
   formatToolError,
   validateFileExists,
+  writeOrInline,
 } from "../lib/tool-helpers.js";
 
 interface ParseError {
@@ -26,8 +27,13 @@ export function registerTlaParse(server: McpServer): void {
       tla_file: absolutePath.describe(
         "Absolute path to the .tla file to parse",
       ),
+      output_file: absolutePath
+        .optional()
+        .describe(
+          "Optional. If provided, raw SANY output is written to this file and the response contains output_file instead of raw_output.",
+        ),
     },
-    async ({ tla_file }) => {
+    async ({ tla_file, output_file }) => {
       try {
         validateFileExists(tla_file, "TLA+ file");
         const result = await runJava({
@@ -127,7 +133,7 @@ export function registerTlaParse(server: McpServer): void {
           valid,
           errors,
           modules_parsed: modulesParsed,
-          raw_output: output,
+          ...writeOrInline(output, output_file),
         });
       } catch (err: unknown) {
         return formatToolError(err);

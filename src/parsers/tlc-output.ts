@@ -28,6 +28,8 @@ export interface TlcViolation {
   type: "invariant" | "deadlock" | "temporal";
   name?: string;
   summary: string;
+  /** Number of trace states leading to the violation (used for dedup). */
+  traceLength?: number;
 }
 
 export interface TlcResult {
@@ -678,17 +680,98 @@ export function parseTlcOutput(output: string): TlcResult {
     }
   }
 
+  // Annotate violations with trace lengths (extracted from the same output)
+  // so we can dedup duplicates of the same property and keep the shortest trace.
+  // We can't strictly align by index because raw-trace extraction may include
+  // entries that didn't surface as violations (e.g. eval errors). Instead we
+  // walk both lists in order and match by (type, name) — entries that don't
+  // match are skipped on the raw-trace side.
+  const rawTraces = extractRawTraces(output);
+  let r = 0;
+  for (const v of violations) {
+    while (r < rawTraces.length) {
+      const rt = rawTraces[r];
+      if (rt.type === v.type && (rt.name ?? undefined) === v.name) {
+        v.traceLength = rt.traceStates.length;
+        r++;
+        break;
+      }
+      r++;
+    }
+  }
+
   return {
     success,
     statesFound,
     statesDistinct,
     errors,
-    violations,
+    violations: dedupeViolations(violations),
     coverage,
     startTime,
     endTime,
     duration,
   };
+}
+
+/**
+ * Group violations by property name and keep only the violation with the
+ * fewest trace states per group. With `-continue`, TLC reports every reachable
+ * violation; without dedup the agent has to wade through many copies of the
+ * same property failure.
+ *
+ * Deadlocks have no name and are NOT deduped against each other (each may
+ * represent a distinct dead-end state).
+ *
+ * Violations with no `traceLength` are kept as-is (we have no signal to
+ * compare them).
+ */
+export function dedupeViolations(violations: TlcViolation[]): TlcViolation[] {
+  // Group by `${type}:${name ?? ""}`; preserve original order.
+  const groupOrder: string[] = [];
+  const groups = new Map<string, TlcViolation[]>();
+
+  for (const v of violations) {
+    // Deadlocks bypass grouping — each is kept individually.
+    if (v.type === "deadlock") {
+      const key = `__deadlock_${groupOrder.length}__`;
+      groupOrder.push(key);
+      groups.set(key, [v]);
+      continue;
+    }
+    // Unnamed non-deadlocks have no dedup signal; keep individually too.
+    if (!v.name) {
+      const key = `__unnamed_${groupOrder.length}__`;
+      groupOrder.push(key);
+      groups.set(key, [v]);
+      continue;
+    }
+    const key = `${v.type}:${v.name}`;
+    if (!groups.has(key)) {
+      groupOrder.push(key);
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(v);
+  }
+
+  const result: TlcViolation[] = [];
+  for (const key of groupOrder) {
+    const group = groups.get(key)!;
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+    // Keep the one with the fewest trace states. Violations without a
+    // traceLength sort last (they don't beat any quantified entry).
+    let best = group[0];
+    for (let i = 1; i < group.length; i++) {
+      const cur = group[i];
+      const bestLen = best.traceLength ?? Number.POSITIVE_INFINITY;
+      const curLen = cur.traceLength ?? Number.POSITIVE_INFINITY;
+      if (curLen < bestLen) best = cur;
+    }
+    result.push(best);
+  }
+  return result;
 }
 
 // -- Tool-mode message code sets ---------------------------------------------

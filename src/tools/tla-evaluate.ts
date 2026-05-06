@@ -9,10 +9,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { absolutePath } from "../lib/schemas.js";
 import {
   combineOutput,
   formatToolResponse,
   formatToolError,
+  writeOrInline,
 } from "../lib/tool-helpers.js";
 
 export function registerTlaEvaluate(server: McpServer): void {
@@ -31,8 +33,13 @@ export function registerTlaEvaluate(server: McpServer): void {
         .describe(
           "Modules to EXTEND (e.g., ['Integers', 'Sequences']). Defaults to ['Integers', 'Sequences', 'FiniteSets', 'TLC']",
         ),
+      output_file: absolutePath
+        .optional()
+        .describe(
+          "Optional. If provided, raw TLC output is written to this file and the response contains output_file instead of raw_output.",
+        ),
     },
-    async ({ expression, imports }) => {
+    async ({ expression, imports, output_file }) => {
       const modules = imports ?? ["Integers", "Sequences", "FiniteSets", "TLC"];
 
       // Validate import names to prevent injection via EXTENDS clause
@@ -121,7 +128,7 @@ export function registerTlaEvaluate(server: McpServer): void {
           status: error ? "error" : "success",
           result: evaluated,
           error,
-          raw_output: output,
+          ...writeOrInline(output, output_file),
         });
       } catch (err: unknown) {
         return formatToolError(err);

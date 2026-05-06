@@ -35,11 +35,15 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { registerTlcCheck } from "./tlc-check.js";
 
 describe("tlc_check", () => {
-  let handler: (params: any) => Promise<any>;
+  let rawHandler: (params: any) => Promise<any>;
+  // output_file is required at the schema level; tests bypass Zod and call the
+  // handler directly, so we inject a default here unless the test overrides it.
+  const handler = (params: any): Promise<any> =>
+    rawHandler({ output_file: "/tmp/test-tlc.out", ...params });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    handler = captureToolHandler(registerTlcCheck);
+    rawHandler = captureToolHandler(registerTlcCheck);
     mockRunJava.mockResolvedValue(
       mockRunJavaResult({
         stdout:
@@ -150,13 +154,14 @@ describe("tlc_check", () => {
   });
 
   describe("output_file", () => {
-    it("writes output to file and returns output_file instead of raw_output", async () => {
+    it("writes raw TLC output to file and returns output_file", async () => {
       const result = await handler({
         tla_file: "/specs/Spec.tla",
         output_file: "/out/dir/tlc.out",
       });
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.output_file).toBe("/out/dir/tlc.out");
+      // raw_output must never appear inline (it can flood the agent context).
       expect(parsed.raw_output).toBeUndefined();
       expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
         "/out/dir/tlc.out",
@@ -175,12 +180,15 @@ describe("tlc_check", () => {
       });
     });
 
-    it("returns raw_output inline when output_file is omitted", async () => {
-      const result = await handler({ tla_file: "/specs/Spec.tla" });
+    it("never returns raw_output inline (always writes to file)", async () => {
+      const result = await handler({
+        tla_file: "/specs/Spec.tla",
+        output_file: "/out/dir/tlc.out",
+      });
       const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.raw_output).toBeDefined();
-      expect(parsed.output_file).toBeUndefined();
-      expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
+      expect(parsed.raw_output).toBeUndefined();
+      expect(parsed.output_file).toBe("/out/dir/tlc.out");
+      expect(vi.mocked(writeFileSync)).toHaveBeenCalledOnce();
     });
   });
 });

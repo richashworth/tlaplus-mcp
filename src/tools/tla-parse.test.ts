@@ -7,7 +7,10 @@ vi.mock("../lib/process.js", () => ({
 }));
 
 vi.mock("../lib/schemas.js", () => ({
-  absolutePath: { describe: () => ({ _def: {} }) } as any,
+  absolutePath: {
+    describe: () => ({ _def: {} }),
+    optional: () => ({ describe: () => ({ _def: {} }) }),
+  } as any,
 }));
 
 vi.mock("node:fs", () => ({

@@ -77,11 +77,9 @@ export function registerTlcCheck(server: McpServer): void {
         .array(z.string())
         .optional()
         .describe("Additional raw arguments to pass to TLC"),
-      output_file: absolutePath
-        .optional()
-        .describe(
-          "Write raw TLC output to this file instead of returning it inline. Response will contain output_file path instead of raw_output.",
-        ),
+      output_file: absolutePath.describe(
+        "Required absolute path. Raw TLC output is written here so it doesn't flood the agent context. Response contains the output_file path; callers Read the file when they need the raw text.",
+      ),
     },
     async (params) => {
       try {
@@ -175,13 +173,11 @@ export function registerTlcCheck(server: McpServer): void {
         }
         const status = deriveStatus(parsed, result.timedOut);
 
-        // Write output to file or return inline
-        const outputFileField: Record<string, string> = {};
-        if (params.output_file) {
-          mkdirSync(dirname(params.output_file), { recursive: true });
-          writeFileSync(params.output_file, output, "utf-8");
-          outputFileField.output_file = params.output_file;
-        }
+        // Always write raw TLC output to the required output_file.
+        // Returning raw_output inline can flood the caller's context window;
+        // callers Read the file when they need the raw text.
+        mkdirSync(dirname(params.output_file), { recursive: true });
+        writeFileSync(params.output_file, output, "utf-8");
 
         return formatToolResponse({
           status,
@@ -192,8 +188,7 @@ export function registerTlcCheck(server: McpServer): void {
           errors: parsed.errors,
           coverage: parsed.coverage,
           ...(dumpFile ? { dump_file: dumpFile } : {}),
-          ...outputFileField,
-          ...(params.output_file ? {} : { raw_output: output }),
+          output_file: params.output_file,
         });
       } catch (err: unknown) {
         return formatToolError(err);
