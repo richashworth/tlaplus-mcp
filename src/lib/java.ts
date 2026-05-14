@@ -9,10 +9,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.js";
 
-// Version and checksum must be updated together
-export const TLAPLUS_VERSION = "1.8.0";
+// Version and checksum must be updated together.
+// Pin to a stable (non-prerelease) tag — upstream may silently re-upload
+// prerelease assets, which would break the SHA-256 check for all users.
+export const TLAPLUS_VERSION = "1.7.4";
 const EXPECTED_SHA256 =
-  "23ba1aff43cc4708580d23b43f767dc968461ed4a18a26f0e66d90eae129542d";
+  "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88";
 const JAR_URL = `https://github.com/tlaplus/tlaplus/releases/download/v${TLAPLUS_VERSION}/tla2tools.jar`;
 const DEFAULT_JAR_DIR = join(homedir(), ".tlaplus-mcp", "lib");
 const DEFAULT_JAR_PATH = join(
