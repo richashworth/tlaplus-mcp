@@ -6,6 +6,7 @@ describe("loadConfig", () => {
 
   beforeEach(() => {
     delete process.env.TLC_JAR_PATH;
+    delete process.env.TLC_JAR_SHA256;
     delete process.env.TLC_JAVA_OPTS;
     delete process.env.TLC_TIMEOUT;
     delete process.env.TLC_WORKSPACE;
@@ -26,6 +27,11 @@ describe("loadConfig", () => {
   it("reads TLC_JAR_PATH", () => {
     process.env.TLC_JAR_PATH = "/custom/tla2tools.jar";
     expect(loadConfig().jarPath).toBe("/custom/tla2tools.jar");
+  });
+
+  it("reads TLC_JAR_SHA256", () => {
+    process.env.TLC_JAR_SHA256 = "ab".repeat(32);
+    expect(loadConfig().jarSha256).toBe("ab".repeat(32));
   });
 
   it("splits TLC_JAVA_OPTS on whitespace", () => {

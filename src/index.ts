@@ -13,9 +13,14 @@ import { getJarPath } from "./lib/java.js";
 
 const server = createServer();
 
-// Pre-download tla2tools.jar so it's ready before any tool call.
-// Errors are non-fatal — tools will retry on first invocation.
-getJarPath().catch(() => {});
+// Verify tla2tools.jar at startup so misconfiguration shows in the MCP log.
+// Non-fatal: every tool call re-verifies and returns the error to the client.
+getJarPath().catch((err: unknown) => {
+  console.error(
+    "tlaplus-mcp:",
+    err instanceof Error ? err.message : String(err),
+  );
+});
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
