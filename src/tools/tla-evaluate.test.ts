@@ -6,6 +6,10 @@ vi.mock("../lib/process.js", () => ({
   runJava: (...args: any[]) => mockRunJava(...args),
 }));
 
+vi.mock("../lib/paths.js", () => ({
+  resolveWritePath: (p: string) => p,
+}));
+
 import { registerTlaEvaluate } from "./tla-evaluate.js";
 
 describe("tla_evaluate", () => {

@@ -1,26 +1,16 @@
 /**
- * Java detection, tla2tools.jar resolution and auto-download.
+ * Java detection and tla2tools.jar verification.
  */
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
 import { loadConfig } from "./config.js";
 
 // Version and checksum must be updated together.
-// Pin to a stable (non-prerelease) tag — upstream may silently re-upload
-// prerelease assets, which would break the SHA-256 check for all users.
 export const TLAPLUS_VERSION = "1.7.4";
-const EXPECTED_SHA256 =
+export const EXPECTED_SHA256 =
   "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88";
-const JAR_URL = `https://github.com/tlaplus/tlaplus/releases/download/v${TLAPLUS_VERSION}/tla2tools.jar`;
-const DEFAULT_JAR_DIR = join(homedir(), ".tlaplus-mcp", "lib");
-const DEFAULT_JAR_PATH = join(
-  DEFAULT_JAR_DIR,
-  `tla2tools-${TLAPLUS_VERSION}.jar`,
-);
 
 /**
  * Parse the major Java version from `java -version` stderr output.
@@ -71,89 +61,65 @@ export function checkJava(): void {
 }
 
 /**
- * Resolve the path to tla2tools.jar.
- *
- * Resolution order:
- * 1. TLC_JAR_PATH environment variable
- * 2. ~/.tlaplus-mcp/lib/tla2tools-{version}.jar (auto-download if missing)
+ * Resolve TLC_JAR_PATH and verify its SHA-256 against the pinned value
+ * (or TLC_JAR_SHA256). Throws on a missing variable, file or mismatch.
  */
-export async function resolveJar(): Promise<string> {
+export function resolveJar(): string {
   const config = loadConfig();
 
-  // 1. Explicit path from env
-  if (config.jarPath) {
-    if (!existsSync(config.jarPath)) {
-      throw new Error(`TLC_JAR_PATH set but file not found: ${config.jarPath}`);
-    }
-    return config.jarPath;
-  }
-
-  // 2. Default location — download if missing
-  if (existsSync(DEFAULT_JAR_PATH)) {
-    return DEFAULT_JAR_PATH;
-  }
-
-  return downloadJar();
-}
-
-/** Download tla2tools.jar to ~/.tlaplus-mcp/lib/ and verify its SHA-256 checksum. */
-async function downloadJar(): Promise<string> {
-  mkdirSync(DEFAULT_JAR_DIR, { recursive: true });
-
-  const response = await fetch(JAR_URL, {
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!response.ok) {
+  if (!config.jarPath) {
     throw new Error(
-      `Failed to download tla2tools.jar from ${JAR_URL}: ${response.status} ${response.statusText}`,
+      `TLC_JAR_PATH is not set. Download tla2tools.jar v${TLAPLUS_VERSION} from ` +
+        `https://github.com/tlaplus/tlaplus/releases/tag/v${TLAPLUS_VERSION} ` +
+        "and set TLC_JAR_PATH to its absolute path.",
     );
   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
-
-  // Validate it's a ZIP/JAR (starts with PK magic bytes)
-  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
-    throw new Error(
-      `Downloaded file from ${JAR_URL} is not a valid JAR archive`,
-    );
+  const expected = (config.jarSha256 ?? EXPECTED_SHA256).toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(expected)) {
+    throw new Error("TLC_JAR_SHA256 must be 64 hex characters");
   }
 
-  const actualHash = createHash("sha256").update(buffer).digest("hex");
-  if (actualHash !== EXPECTED_SHA256) {
-    throw new Error(
-      `SHA-256 checksum mismatch for tla2tools.jar v${TLAPLUS_VERSION}.\n` +
-        `Expected: ${EXPECTED_SHA256}\n` +
-        `Actual:   ${actualHash}\n` +
-        "The downloaded file may be corrupted or tampered with.",
-    );
-  }
-
-  writeFileSync(DEFAULT_JAR_PATH, buffer);
-  return DEFAULT_JAR_PATH;
-}
-
-/** Get the jar path, throwing a user-friendly error if unavailable. */
-let cachedJarPath: string | undefined;
-let pendingResolve: Promise<string> | undefined;
-export async function getJarPath(): Promise<string> {
-  if (cachedJarPath) {
-    if (!existsSync(cachedJarPath)) {
-      cachedJarPath = undefined;
-    } else {
-      return cachedJarPath;
-    }
-  }
-  // Deduplicate concurrent calls to prevent parallel downloads
-  if (!pendingResolve) {
-    pendingResolve = (async () => {
-      checkJava();
-      return resolveJar();
-    })();
-  }
+  let contents: Buffer;
   try {
-    cachedJarPath = await pendingResolve;
-    return cachedJarPath;
-  } finally {
-    pendingResolve = undefined;
+    contents = readFileSync(config.jarPath);
+  } catch {
+    throw new Error(`TLC_JAR_PATH set but file not found: ${config.jarPath}`);
   }
+
+  const actual = createHash("sha256").update(contents).digest("hex");
+  if (actual !== expected) {
+    throw new Error(
+      `SHA-256 mismatch for ${config.jarPath}.\n` +
+        `Expected: ${expected}\n` +
+        `Actual:   ${actual}\n` +
+        `Use tla2tools.jar v${TLAPLUS_VERSION}, or set TLC_JAR_SHA256 to trust a different build.`,
+    );
+  }
+
+  return config.jarPath;
+}
+
+// Re-hash when the file's size or mtime changes, so a swapped jar is caught.
+let verified: { path: string; size: number; mtimeMs: number } | undefined;
+
+/** Check Java and return the verified jar path. */
+export async function getJarPath(): Promise<string> {
+  const { jarPath } = loadConfig();
+  if (verified && verified.path === jarPath) {
+    try {
+      const st = statSync(jarPath);
+      if (st.size === verified.size && st.mtimeMs === verified.mtimeMs) {
+        return verified.path;
+      }
+    } catch {
+      /* fall through and re-verify */
+    }
+  }
+  verified = undefined;
+  checkJava();
+  const path = resolveJar();
+  const st = statSync(path);
+  verified = { path, size: st.size, mtimeMs: st.mtimeMs };
+  return path;
 }

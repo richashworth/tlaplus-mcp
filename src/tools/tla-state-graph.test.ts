@@ -3,6 +3,10 @@ import { captureToolHandler } from "../test-utils.js";
 import fs from "node:fs";
 import { existsSync } from "node:fs";
 
+vi.mock("../lib/paths.js", async () =>
+  (await import("../test-utils.js")).passthroughPathsMock(),
+);
+
 vi.mock("../lib/schemas.js", () => ({
   absolutePath: {
     describe: () => ({ _def: {} }),

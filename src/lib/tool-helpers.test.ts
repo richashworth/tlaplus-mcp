@@ -5,7 +5,6 @@ import {
   deriveStatus,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "./tool-helpers.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
 
@@ -113,17 +112,5 @@ describe("formatToolError", () => {
     const result = formatToolError(404);
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.error).toBe("404");
-  });
-});
-
-describe("validateFileExists", () => {
-  it("throws for non-existent file with descriptive message", () => {
-    expect(() => validateFileExists("/no/such/file.tla", "TLA+ file")).toThrow(
-      "TLA+ file not found: /no/such/file.tla",
-    );
-  });
-
-  it("does not throw for existing file", () => {
-    expect(() => validateFileExists("package.json", "Config")).not.toThrow();
   });
 });

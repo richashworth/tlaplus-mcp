@@ -6,12 +6,13 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { execFileSync } from "node:child_process";
+import { dirname } from "node:path";
 import { absolutePath } from "../lib/schemas.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "../lib/tool-helpers.js";
 
 export function registerTlaTex(server: McpServer): void {
@@ -46,7 +47,8 @@ export function registerTlaTex(server: McpServer): void {
       output_format,
     }) => {
       try {
-        validateFileExists(tla_file, "TLA+ file");
+        const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        assertSafeSpecDir(dirname(tlaFile));
         // Check for LaTeX availability
         const latexCmd = output_format === "pdf" ? "pdflatex" : "latex";
         try {
@@ -77,11 +79,13 @@ export function registerTlaTex(server: McpServer): void {
           args.push("-latexCommand", "pdflatex");
         }
 
-        args.push(tla_file);
+        args.push(tlaFile);
 
+        // TLATeX writes its .tex/.dvi/.pdf into the working directory.
         const result = await runJava({
           className: "tla2tex.TLA",
           args,
+          cwd: dirname(tlaFile),
         });
 
         const output = combineOutput(result);
@@ -89,7 +93,7 @@ export function registerTlaTex(server: McpServer): void {
 
         // Determine output file path
         const ext = output_format === "pdf" ? ".pdf" : ".dvi";
-        const outputFile = tla_file.replace(/\.tla$/, ext);
+        const outputFile = tlaFile.replace(/\.tla$/, ext);
 
         let error: string | null = null;
         if (!success) {

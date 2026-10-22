@@ -4,16 +4,20 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJava, sanitizeExtraArgs } from "../lib/process.js";
-import { dirname, basename, join } from "node:path";
+import {
+  runJava,
+  sanitizeExtraArgs,
+  EXTRA_ARGS_DESCRIPTION,
+} from "../lib/process.js";
+import { dirname, basename, join, resolve } from "node:path";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { absolutePath } from "../lib/schemas.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
@@ -37,12 +41,13 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional TLC arguments"),
+        .describe(EXTRA_ARGS_DESCRIPTION),
     },
     async ({ tla_file, cfg_file, monolith, extra_args }) => {
       try {
-        validateFileExists(tla_file, "TLA+ file");
-        const dir = dirname(tla_file);
+        const specFile = resolveReadPath(tla_file, "TLA+ file");
+        const dir = dirname(specFile);
+        assertSafeSpecDir(dir);
         const args: string[] = [];
 
         args.push("-generateSpecTE");
@@ -54,7 +59,10 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         args.push("-tool", "-modelcheck");
 
         if (cfg_file) {
-          args.push("-config", cfg_file);
+          args.push(
+            "-config",
+            resolveReadPath(resolve(dir, cfg_file), "Config file"),
+          );
         }
 
         if (extra_args) {
@@ -66,7 +74,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         const metaDir = mkdtempSync(join(tmpdir(), "tlc-meta-"));
         args.push("-metadir", metaDir);
 
-        args.push(tla_file);
+        args.push(specFile);
 
         let result;
         try {
@@ -85,37 +93,20 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
 
         const output = combineOutput(result);
 
-        // Look for generated SpecTE files
-        const baseName = basename(tla_file, ".tla");
-        const specTeTla = join(dir, `${baseName}_SpecTE.tla`);
-        const specTeCfg = join(dir, `${baseName}_SpecTE.cfg`);
+        // Only look at the two names TLC uses, both in the (scanned) spec
+        // directory; never take a path from TLC's output.
+        const baseName = basename(specFile, ".tla");
+        const firstExisting = (...names: string[]): string | null =>
+          names.map((n) => join(dir, n)).find((p) => existsSync(p)) ?? null;
+        const generated = output.includes("SpecTE");
+        const tlaFile = generated
+          ? firstExisting(`${baseName}_SpecTE.tla`, "SpecTE.tla")
+          : null;
+        const cfgFile = tlaFile
+          ? firstExisting(`${baseName}_SpecTE.cfg`, "SpecTE.cfg")
+          : null;
 
-        // Also check for the standard "SpecTE" naming
-        let tlaFile: string | null = null;
-        let cfgFile: string | null = null;
-
-        // TLC outputs the generated file paths
-        const teFileMatch = output.match(
-          /SpecTE(?:\.tla)?\s+(?:written to|generated|created)\s+(.+?)(?:\n|$)/i,
-        );
-        if (teFileMatch) {
-          tlaFile = teFileMatch[1].trim();
-        }
-
-        // Check common output patterns for the generated files
-        if (!tlaFile) {
-          if (output.includes("SpecTE.tla") || output.includes("_SpecTE.tla")) {
-            tlaFile = output.includes("_SpecTE.tla")
-              ? specTeTla
-              : join(dir, "SpecTE.tla");
-            cfgFile = output.includes("_SpecTE.cfg")
-              ? specTeCfg
-              : join(dir, "SpecTE.cfg");
-          }
-        }
-
-        const success =
-          result.exitCode === 0 || (tlaFile !== null && existsSync(tlaFile));
+        const success = result.exitCode === 0 || tlaFile !== null;
 
         let error: string | null = null;
         if (!success) {

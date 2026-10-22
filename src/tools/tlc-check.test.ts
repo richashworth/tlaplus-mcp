@@ -3,6 +3,7 @@ import { captureToolHandler, mockRunJavaResult } from "../test-utils.js";
 
 const mockRunJava = vi.fn();
 vi.mock("../lib/process.js", () => ({
+  EXTRA_ARGS_DESCRIPTION: "",
   runJava: (...args: any[]) => mockRunJava(...args),
   sanitizeExtraArgs: (args: string[]) => {
     for (const a of args) {
@@ -15,6 +16,10 @@ vi.mock("../lib/process.js", () => ({
     return args;
   },
 }));
+
+vi.mock("../lib/paths.js", async () =>
+  (await import("../test-utils.js")).passthroughPathsMock(),
+);
 
 vi.mock("../lib/schemas.js", () => ({
   absolutePath: {

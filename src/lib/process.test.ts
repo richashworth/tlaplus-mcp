@@ -57,8 +57,28 @@ describe("runJava timeout", () => {
 });
 
 describe("sanitizeExtraArgs", () => {
-  it("passes safe args through unchanged", () => {
-    const args = ["-workers", "4", "-difftrace"];
+  it("passes allowed flags and values through unchanged", () => {
+    const args = [
+      "-workers",
+      "auto",
+      "-depth",
+      "50",
+      "-seed",
+      "-7",
+      "-fpmem",
+      "0.5",
+      "-simulate",
+      "num=3",
+      "-deadlock",
+      "-difftrace",
+      "-continue",
+      "-coverage",
+      "2",
+      "-maxSetSize",
+      "100",
+      "-fp",
+      "3",
+    ];
     expect(sanitizeExtraArgs(args)).toEqual(args);
   });
 
@@ -66,43 +86,68 @@ describe("sanitizeExtraArgs", () => {
     expect(sanitizeExtraArgs([])).toEqual([]);
   });
 
-  it("blocks -dump", () => {
-    expect(() => sanitizeExtraArgs(["-dump"])).toThrow(/not allowed/);
+  it.each([
+    ["-dump"],
+    ["-dumptrace"],
+    ["-metadir"],
+    ["-userFile"],
+    ["-tlafile"],
+    ["-config"],
+    ["-generateSpecTE"],
+    ["-DUMP"],
+    ["-dump=dot"],
+    ["-workers=4"],
+    ["Spec.tla"],
+    ["/etc/passwd"],
+    ["--"],
+  ])("rejects %s", (flag) => {
+    expect(() => sanitizeExtraArgs([flag])).toThrow(/not allowed/);
   });
 
-  it("blocks -metadir", () => {
-    expect(() => sanitizeExtraArgs(["-metadir"])).toThrow(/not allowed/);
+  it.each([
+    ["-dump", "use tlc_check with generate_states / dump_path instead"],
+    ["-DUMP=dot", "use tlc_check with generate_states / dump_path instead"],
+    ["-config", "use the cfg_file parameter instead"],
+    ["-generateSpecTE", "use the tlc_generate_trace_spec tool instead"],
+    ["-nomonolith", "use tlc_generate_trace_spec with monolith: false instead"],
+  ])("points %s to its dedicated parameter", (flag, route) => {
+    expect(() => sanitizeExtraArgs([flag])).toThrow(`; ${route}.`);
   });
 
-  it("blocks -userFile", () => {
-    expect(() => sanitizeExtraArgs(["-userFile"])).toThrow(/not allowed/);
-  });
-
-  it("blocks -tlafile", () => {
-    expect(() => sanitizeExtraArgs(["-tlafile"])).toThrow(/not allowed/);
-  });
-
-  it("blocks case-insensitively", () => {
-    expect(() => sanitizeExtraArgs(["-DUMP"])).toThrow(/not allowed/);
-    expect(() => sanitizeExtraArgs(["-Dump"])).toThrow(/not allowed/);
+  it("gives no route for a flag without a dedicated parameter", () => {
+    expect(() => sanitizeExtraArgs(["-metadir"])).toThrow(
+      /^Flag "-metadir" is not allowed in extra_args\. Allowed:/,
+    );
   });
 
   it("includes the flag name in the error message", () => {
     expect(() => sanitizeExtraArgs(["-dump"])).toThrow('"-dump"');
   });
 
-  it("blocks flags using = syntax (e.g. -dump=dot)", () => {
-    expect(() => sanitizeExtraArgs(["-dump=dot"])).toThrow(/not allowed/);
-    expect(() => sanitizeExtraArgs(["-metadir=/tmp/meta"])).toThrow(
-      /not allowed/,
-    );
-    expect(() =>
-      sanitizeExtraArgs(["-DUMP=dot,colorize,actionlabels"]),
-    ).toThrow(/not allowed/);
+  it("is case-sensitive", () => {
+    expect(() => sanitizeExtraArgs(["-Workers", "4"])).toThrow(/not allowed/);
   });
 
-  it("blocks -dumptrace", () => {
-    expect(() => sanitizeExtraArgs(["-dumptrace"])).toThrow(/not allowed/);
-    expect(() => sanitizeExtraArgs(["-dumptrace=tla"])).toThrow(/not allowed/);
+  it("rejects a missing value", () => {
+    expect(() => sanitizeExtraArgs(["-workers"])).toThrow(/needs a value/);
+  });
+
+  it("rejects a malformed value", () => {
+    expect(() => sanitizeExtraArgs(["-depth", "/tmp/x"])).toThrow(
+      /needs a value/,
+    );
+    expect(() => sanitizeExtraArgs(["-workers", "0"])).toThrow(/needs a value/);
+  });
+
+  it("rejects simulate file= output", () => {
+    expect(() =>
+      sanitizeExtraArgs(["-simulate", "file=/tmp/out,num=1"]),
+    ).toThrow(/needs a value/);
+  });
+
+  it("does not let a value smuggle a second flag", () => {
+    expect(() => sanitizeExtraArgs(["-seed", "1", "-metadir", "/x"])).toThrow(
+      /"-metadir"/,
+    );
   });
 });

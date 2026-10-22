@@ -40,3 +40,19 @@ export function mockRunJavaResult(
     ...overrides,
   };
 }
+
+/**
+ * vi.mock factory for lib/paths.js that skips root confinement but keeps the
+ * "not found" check, using whatever node:fs mock the test file installs.
+ */
+export async function passthroughPathsMock() {
+  const { existsSync } = await import("node:fs");
+  return {
+    resolveReadPath: (p: string, label: string) => {
+      if (!existsSync(p)) throw new Error(`${label} not found: ${p}`);
+      return p;
+    },
+    resolveWritePath: (p: string) => p,
+    assertSafeSpecDir: () => {},
+  };
+}

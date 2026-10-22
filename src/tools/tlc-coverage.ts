@@ -4,19 +4,23 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { dirname, basename, join } from "node:path";
+import { dirname, basename, join, resolve } from "node:path";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { runJava, sanitizeExtraArgs } from "../lib/process.js";
+import {
+  runJava,
+  sanitizeExtraArgs,
+  EXTRA_ARGS_DESCRIPTION,
+} from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   defaultCfgPath,
   combineOutput,
   deriveStatus,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "../lib/tool-helpers.js";
 
 export function registerTlcCoverage(server: McpServer): void {
@@ -45,18 +49,22 @@ export function registerTlcCoverage(server: McpServer): void {
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional raw arguments to pass to TLC"),
+        .describe(EXTRA_ARGS_DESCRIPTION),
     },
     async (params) => {
       try {
-        validateFileExists(params.tla_file, "TLA+ file");
-        const cwd = dirname(params.tla_file);
-        const specName = basename(params.tla_file);
+        const tlaFile = resolveReadPath(params.tla_file, "TLA+ file");
+        const cwd = dirname(tlaFile);
+        const specName = basename(tlaFile);
+        assertSafeSpecDir(cwd);
 
         const args: string[] = ["-modelcheck", "-tool"];
 
         // Config file
-        const cfgFile = params.cfg_file ?? defaultCfgPath(params.tla_file);
+        const cfgFile = resolveReadPath(
+          resolve(cwd, params.cfg_file ?? defaultCfgPath(tlaFile)),
+          "Config file",
+        );
         args.push("-config", cfgFile);
 
         // Coverage interval

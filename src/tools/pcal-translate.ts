@@ -8,10 +8,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
 import {
+  assertSafeSpecDir,
+  resolveReadPath,
+  resolveWritePath,
+} from "../lib/paths.js";
+import {
   combineOutput,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
   writeOrInline,
 } from "../lib/tool-helpers.js";
 
@@ -62,7 +66,11 @@ export function registerPcalTranslate(server: McpServer): void {
       output_file,
     }) => {
       try {
-        validateFileExists(tla_file, "TLA+ file");
+        // Translated in place, so this is a write as well as a read.
+        const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        assertSafeSpecDir(dirname(tlaFile));
+        const outputFile =
+          output_file && resolveWritePath(output_file, "output_file");
         const args: string[] = [];
 
         if (fairness !== "nof") {
@@ -81,12 +89,12 @@ export function registerPcalTranslate(server: McpServer): void {
           args.push("-lineWidth", String(line_width));
         }
 
-        args.push(tla_file);
+        args.push(tlaFile);
 
         const result = await runJava({
           className: "pcal.trans",
           args,
-          cwd: dirname(tla_file),
+          cwd: dirname(tlaFile),
         });
 
         const output = combineOutput(result);
@@ -117,8 +125,8 @@ export function registerPcalTranslate(server: McpServer): void {
           // PlusCal translation is in-place: the translated TLA+ spec is
           // written back to tla_file. Reporting it explicitly so callers
           // don't have to remember the in-place semantics.
-          translated_file: tla_file,
-          ...writeOrInline(output, output_file),
+          translated_file: tlaFile,
+          ...writeOrInline(output, outputFile),
         });
       } catch (err: unknown) {
         return formatToolError(err);

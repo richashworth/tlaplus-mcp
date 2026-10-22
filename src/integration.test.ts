@@ -13,7 +13,16 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "./server.js";
@@ -21,6 +30,10 @@ import { createServer } from "./server.js";
 // -- Test helpers -------------------------------------------------------------
 
 let client: Client;
+// Sole allowed root for the whole suite (TLAPLUS_MCP_ROOTS).
+let tempDir: string;
+// A sibling directory outside the root.
+let outsideDir: string;
 
 async function setupClientServer() {
   const server = createServer();
@@ -67,7 +80,7 @@ async function expectFileNotFound(
 ) {
   const result = await client.callTool({
     name: toolName,
-    arguments: { tla_file: "/nonexistent/Spec.tla", ...extraArgs },
+    arguments: { tla_file: join(tempDir, "missing", "Spec.tla"), ...extraArgs },
   });
   expect(result.isError).toBe(true);
   const parsed = parseToolResult(result);
@@ -78,7 +91,7 @@ async function expectFileNotFound(
 
 describe("MCP server integration", () => {
   let server: Awaited<ReturnType<typeof createServer>>;
-  let tempDir: string;
+  const originalRoots = process.env.TLAPLUS_MCP_ROOTS;
 
   /** Allocate a temp output_file path used by json-format tla_state_graph calls. */
   function tempOutputFile(name = "graph.json"): string {
@@ -94,14 +107,21 @@ describe("MCP server integration", () => {
     const setup = await setupClientServer();
     client = setup.client;
     server = setup.server;
-    tempDir = mkdtempSync(join(tmpdir(), "tlaplus-mcp-it-"));
+    const base = realpathSync(mkdtempSync(join(tmpdir(), "tlaplus-mcp-it-")));
+    tempDir = join(base, "root");
+    outsideDir = join(base, "outside");
+    mkdirSync(tempDir);
+    mkdirSync(outsideDir);
+    process.env.TLAPLUS_MCP_ROOTS = tempDir;
   });
 
   afterAll(async () => {
+    if (originalRoots === undefined) delete process.env.TLAPLUS_MCP_ROOTS;
+    else process.env.TLAPLUS_MCP_ROOTS = originalRoots;
     await client.close();
     await server.close();
     try {
-      rmSync(tempDir, { recursive: true, force: true });
+      rmSync(join(tempDir, ".."), { recursive: true, force: true });
     } catch {
       /* best-effort */
     }
@@ -360,7 +380,7 @@ Back to state 2
       const result = await client.callTool({
         name: "tla_state_graph",
         arguments: {
-          dot_file: "/nonexistent/path/states.dot",
+          dot_file: join(tempDir, "nonexistent", "states.dot"),
           output_file: tempOutputFile(),
         },
       });
@@ -375,10 +395,12 @@ Back to state 2
 
   describe("tlc_check", () => {
     it("errors when tla_file does not exist", () =>
-      expectFileNotFound("tlc_check", { output_file: "/tmp/tlc.out" }));
+      expectFileNotFound("tlc_check", {
+        output_file: join(tempDir, "tlc.out"),
+      }));
     it("rejects non-absolute tla_file path", () =>
       expectAbsolutePathRequired("tlc_check", {
-        output_file: "/tmp/tlc.out",
+        output_file: join(tempDir, "tlc.out"),
       }));
     it("rejects when output_file is missing", async () => {
       const result = await client.callTool({
@@ -469,5 +491,132 @@ Back to state 2
       expectFileNotFound("tla_tex"));
     it("rejects non-absolute tla_file path", () =>
       expectAbsolutePathRequired("tla_tex"));
+  });
+  // -- Path confinement -------------------------------------------------------
+
+  describe("path confinement", () => {
+    function writeSpec(dir: string, name = "Spec"): string {
+      const file = join(dir, `${name}.tla`);
+      writeFileSync(file, `---- MODULE ${name} ----\n====\n`);
+      writeFileSync(join(dir, `${name}.cfg`), "");
+      return file;
+    }
+
+    function freshDir(name: string): string {
+      const dir = join(tempDir, name);
+      mkdirSync(dir);
+      return dir;
+    }
+
+    async function expectOutsideRoots(
+      name: string,
+      args: Record<string, unknown>,
+    ) {
+      const result = await client.callTool({ name, arguments: args });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        "outside the allowed roots",
+      );
+    }
+
+    it("refuses to read a spec outside the roots", () =>
+      expectOutsideRoots("tla_parse", { tla_file: writeSpec(outsideDir) }));
+
+    it("refuses to write output_file outside the roots", async () => {
+      const out = join(outsideDir, "tlc.out");
+      await expectOutsideRoots("tlc_check", {
+        tla_file: writeSpec(tempDir),
+        output_file: out,
+      });
+      expect(existsSync(out)).toBe(false);
+    });
+
+    it("refuses a cfg_file outside the roots", () =>
+      expectOutsideRoots("tlc_simulate", {
+        tla_file: writeSpec(tempDir),
+        cfg_file: join(outsideDir, "Spec.cfg"),
+      }));
+
+    it("refuses a dump_path outside the roots", () =>
+      expectOutsideRoots("tlc_check", {
+        tla_file: writeSpec(tempDir),
+        output_file: join(tempDir, "tlc.out"),
+        generate_states: true,
+        dump_path: join(outsideDir, "states"),
+      }));
+
+    it("refuses a symlink inside the root that points outside", async () => {
+      const link = join(tempDir, "Linked.tla");
+      symlinkSync(writeSpec(outsideDir, "Linked"), link);
+      await expectOutsideRoots("tla_parse", { tla_file: link });
+    });
+
+    it("refuses writing through a symlinked directory that points outside", async () => {
+      const linkDir = join(tempDir, "escape");
+      symlinkSync(outsideDir, linkDir);
+      await expectOutsideRoots("tla_state_graph", {
+        traces_only: true,
+        tlc_output: "",
+        output_file: join(linkDir, "graph.json"),
+      });
+      expect(existsSync(join(outsideDir, "graph.json"))).toBe(false);
+    });
+
+    it("refuses tla_state_graph reads outside the roots", () =>
+      expectOutsideRoots("tla_state_graph", {
+        dot_file: join(outsideDir, "states.dot"),
+        output_file: tempOutputFile(),
+      }));
+
+    it("refuses a disallowed extra_args flag", async () => {
+      const result = await client.callTool({
+        name: "tlc_simulate",
+        arguments: {
+          tla_file: writeSpec(freshDir("extra-args")),
+          extra_args: ["-dump", "dot", join(outsideDir, "x")],
+        },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        'Flag "-dump" is not allowed in extra_args; use tlc_check with generate_states / dump_path instead',
+      );
+    });
+
+    it("refuses to run TLC next to a Java class file", async () => {
+      const dir = freshDir("overrides");
+      writeFileSync(join(dir, "Evil.class"), "");
+      const result = await client.callTool({
+        name: "tlc_simulate",
+        arguments: { tla_file: writeSpec(dir) },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain("Java class file");
+    });
+
+    it("refuses to parse a spec whose imported module links outside", async () => {
+      const dir = freshDir("imports");
+      symlinkSync(writeSpec(outsideDir, "Helper"), join(dir, "Helper.tla"));
+      const result = await client.callTool({
+        name: "tla_parse",
+        arguments: { tla_file: writeSpec(dir) },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        "Helper.tla links outside the allowed roots",
+      );
+    });
+
+    it("refuses to typeset where an output name links outside", async () => {
+      const dir = freshDir("tex");
+      symlinkSync(join(outsideDir, "Spec.pdf"), join(dir, "Spec.pdf"));
+      const result = await client.callTool({
+        name: "tla_tex",
+        arguments: { tla_file: writeSpec(dir) },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        "Spec.pdf is a dangling symlink",
+      );
+    });
   });
 });

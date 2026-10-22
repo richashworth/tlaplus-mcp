@@ -6,6 +6,10 @@ vi.mock("../lib/process.js", () => ({
   runJava: (...args: any[]) => mockRunJava(...args),
 }));
 
+vi.mock("../lib/paths.js", async () =>
+  (await import("../test-utils.js")).passthroughPathsMock(),
+);
+
 vi.mock("../lib/schemas.js", () => ({
   absolutePath: {
     describe: () => ({ _def: {} }),
