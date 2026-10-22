@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
+  linkSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
@@ -11,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   allowedRoots,
-  assertNoJavaOverrides,
+  assertSafeSpecDir,
   resolveReadPath,
   resolveWritePath,
 } from "./paths.js";
@@ -160,14 +161,78 @@ describe("path confinement", () => {
     });
   });
 
-  describe("assertNoJavaOverrides", () => {
-    it("passes a directory without class files", () => {
-      expect(() => assertNoJavaOverrides(root)).not.toThrow();
+  describe("hard links", () => {
+    it("refuses to read a hard-linked file", () => {
+      linkSync(join(outside, "Secret.tla"), join(root, "Hard.tla"));
+      expect(() =>
+        resolveReadPath(join(root, "Hard.tla"), "TLA+ file"),
+      ).toThrow(/2 hard links/);
     });
 
-    it("refuses a directory with a class file", () => {
+    it("refuses a hard-linked output_file", () => {
+      linkSync(join(outside, "Secret.tla"), join(root, "out.txt"));
+      expect(() =>
+        resolveWritePath(join(root, "out.txt"), "output_file"),
+      ).toThrow(/output_file has 2 hard links/);
+    });
+
+    it("accepts an existing output_file with a single link", () => {
+      writeFileSync(join(root, "out.txt"), "");
+      expect(resolveWritePath(join(root, "out.txt"), "output_file")).toBe(
+        join(root, "out.txt"),
+      );
+    });
+  });
+
+  describe("assertSafeSpecDir", () => {
+    it("passes a plain directory and symlinks that stay inside the roots", () => {
+      mkdirSync(join(root, "sub"));
+      symlinkSync(join(root, "Spec.tla"), join(root, "Alias.tla"));
+      expect(() => assertSafeSpecDir(root)).not.toThrow();
+    });
+
+    it("refuses a class file", () => {
       writeFileSync(join(root, "Spec.class"), "");
-      expect(() => assertNoJavaOverrides(root)).toThrow(/Spec\.class/);
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /Spec\.class is a Java class file/,
+      );
+    });
+
+    it("refuses a symlink that points outside", () => {
+      symlinkSync(join(outside, "Secret.tla"), join(root, "Helper.tla"));
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /Helper\.tla links outside the allowed roots/,
+      );
+    });
+
+    it("refuses a symlinked directory that points outside", () => {
+      symlinkSync(outside, join(root, "linkdir"));
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /linkdir links outside the allowed roots/,
+      );
+    });
+
+    it("refuses a dangling symlink", () => {
+      symlinkSync(
+        join(outside, "Spec_SpecTE.tla"),
+        join(root, "Spec_SpecTE.tla"),
+      );
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /Spec_SpecTE\.tla is a dangling symlink/,
+      );
+    });
+
+    it("refuses a hard-linked file", () => {
+      linkSync(join(outside, "Secret.tla"), join(root, "Helper.tla"));
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /Helper\.tla has 2 hard links/,
+      );
+    });
+
+    it("lists every problem", () => {
+      writeFileSync(join(root, "A.class"), "");
+      symlinkSync(join(outside, "nope"), join(root, "B.tla"));
+      expect(() => assertSafeSpecDir(root)).toThrow(/A\.class.*; B\.tla/);
     });
   });
 });

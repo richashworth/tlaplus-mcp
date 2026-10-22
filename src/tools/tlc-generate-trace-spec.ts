@@ -13,7 +13,7 @@ import { dirname, basename, join, resolve } from "node:path";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { absolutePath } from "../lib/schemas.js";
-import { assertNoJavaOverrides, resolveReadPath } from "../lib/paths.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
@@ -47,7 +47,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
       try {
         const specFile = resolveReadPath(tla_file, "TLA+ file");
         const dir = dirname(specFile);
-        assertNoJavaOverrides(dir);
+        assertSafeSpecDir(dir);
         const args: string[] = [];
 
         args.push("-generateSpecTE");
@@ -93,37 +93,20 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
 
         const output = combineOutput(result);
 
-        // Look for generated SpecTE files
+        // Only look at the two names TLC uses, both in the (scanned) spec
+        // directory; never take a path from TLC's output.
         const baseName = basename(specFile, ".tla");
-        const specTeTla = join(dir, `${baseName}_SpecTE.tla`);
-        const specTeCfg = join(dir, `${baseName}_SpecTE.cfg`);
+        const firstExisting = (...names: string[]): string | null =>
+          names.map((n) => join(dir, n)).find((p) => existsSync(p)) ?? null;
+        const generated = output.includes("SpecTE");
+        const tlaFile = generated
+          ? firstExisting(`${baseName}_SpecTE.tla`, "SpecTE.tla")
+          : null;
+        const cfgFile = tlaFile
+          ? firstExisting(`${baseName}_SpecTE.cfg`, "SpecTE.cfg")
+          : null;
 
-        // Also check for the standard "SpecTE" naming
-        let tlaFile: string | null = null;
-        let cfgFile: string | null = null;
-
-        // TLC outputs the generated file paths
-        const teFileMatch = output.match(
-          /SpecTE(?:\.tla)?\s+(?:written to|generated|created)\s+(.+?)(?:\n|$)/i,
-        );
-        if (teFileMatch) {
-          tlaFile = teFileMatch[1].trim();
-        }
-
-        // Check common output patterns for the generated files
-        if (!tlaFile) {
-          if (output.includes("SpecTE.tla") || output.includes("_SpecTE.tla")) {
-            tlaFile = output.includes("_SpecTE.tla")
-              ? specTeTla
-              : join(dir, "SpecTE.tla");
-            cfgFile = output.includes("_SpecTE.cfg")
-              ? specTeCfg
-              : join(dir, "SpecTE.cfg");
-          }
-        }
-
-        const success =
-          result.exitCode === 0 || (tlaFile !== null && existsSync(tlaFile));
+        const success = result.exitCode === 0 || tlaFile !== null;
 
         let error: string | null = null;
         if (!success) {

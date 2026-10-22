@@ -14,7 +14,7 @@ import {
 } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { assertNoJavaOverrides, resolveReadPath } from "../lib/paths.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   defaultCfgPath,
   combineOutput,
@@ -83,7 +83,7 @@ export function registerTlcSimulate(server: McpServer): void {
         const tlaFile = resolveReadPath(params.tla_file, "TLA+ file");
         const cwd = dirname(tlaFile);
         const specName = basename(tlaFile);
-        assertNoJavaOverrides(cwd);
+        assertSafeSpecDir(cwd);
 
         // Build simulate flag with optional num traces
         let simulateFlag = "num=1";

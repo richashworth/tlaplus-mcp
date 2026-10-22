@@ -8,7 +8,7 @@ import { runJava } from "../lib/process.js";
 import { execFileSync } from "node:child_process";
 import { dirname } from "node:path";
 import { absolutePath } from "../lib/schemas.js";
-import { resolveReadPath } from "../lib/paths.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
@@ -48,6 +48,7 @@ export function registerTlaTex(server: McpServer): void {
     }) => {
       try {
         const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        assertSafeSpecDir(dirname(tlaFile));
         // Check for LaTeX availability
         const latexCmd = output_format === "pdf" ? "pdflatex" : "latex";
         try {

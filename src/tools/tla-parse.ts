@@ -6,7 +6,11 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { resolveReadPath, resolveWritePath } from "../lib/paths.js";
+import {
+  assertSafeSpecDir,
+  resolveReadPath,
+  resolveWritePath,
+} from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
@@ -36,6 +40,7 @@ export function registerTlaParse(server: McpServer): void {
     async ({ tla_file, output_file }) => {
       try {
         const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        assertSafeSpecDir(dirname(tlaFile));
         const outputFile =
           output_file && resolveWritePath(output_file, "output_file");
         const result = await runJava({

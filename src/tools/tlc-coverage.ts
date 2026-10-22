@@ -14,7 +14,7 @@ import {
 } from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
-import { assertNoJavaOverrides, resolveReadPath } from "../lib/paths.js";
+import { assertSafeSpecDir, resolveReadPath } from "../lib/paths.js";
 import {
   defaultCfgPath,
   combineOutput,
@@ -56,7 +56,7 @@ export function registerTlcCoverage(server: McpServer): void {
         const tlaFile = resolveReadPath(params.tla_file, "TLA+ file");
         const cwd = dirname(tlaFile);
         const specName = basename(tlaFile);
-        assertNoJavaOverrides(cwd);
+        assertSafeSpecDir(cwd);
 
         const args: string[] = ["-modelcheck", "-tool"];
 

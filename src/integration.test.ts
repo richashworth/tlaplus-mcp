@@ -502,6 +502,12 @@ Back to state 2
       return file;
     }
 
+    function freshDir(name: string): string {
+      const dir = join(tempDir, name);
+      mkdirSync(dir);
+      return dir;
+    }
+
     async function expectOutsideRoots(
       name: string,
       args: Record<string, unknown>,
@@ -566,7 +572,7 @@ Back to state 2
       const result = await client.callTool({
         name: "tlc_simulate",
         arguments: {
-          tla_file: writeSpec(tempDir),
+          tla_file: writeSpec(freshDir("extra-args")),
           extra_args: ["-dump", "dot", join(outsideDir, "x")],
         },
       });
@@ -575,15 +581,40 @@ Back to state 2
     });
 
     it("refuses to run TLC next to a Java class file", async () => {
-      const dir = join(tempDir, "overrides");
-      mkdirSync(dir);
+      const dir = freshDir("overrides");
       writeFileSync(join(dir, "Evil.class"), "");
       const result = await client.callTool({
         name: "tlc_simulate",
         arguments: { tla_file: writeSpec(dir) },
       });
       expect(result.isError).toBe(true);
-      expect(parseToolResult(result).error).toContain("Java class files");
+      expect(parseToolResult(result).error).toContain("Java class file");
+    });
+
+    it("refuses to parse a spec whose imported module links outside", async () => {
+      const dir = freshDir("imports");
+      symlinkSync(writeSpec(outsideDir, "Helper"), join(dir, "Helper.tla"));
+      const result = await client.callTool({
+        name: "tla_parse",
+        arguments: { tla_file: writeSpec(dir) },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        "Helper.tla links outside the allowed roots",
+      );
+    });
+
+    it("refuses to typeset where an output name links outside", async () => {
+      const dir = freshDir("tex");
+      symlinkSync(join(outsideDir, "Spec.pdf"), join(dir, "Spec.pdf"));
+      const result = await client.callTool({
+        name: "tla_tex",
+        arguments: { tla_file: writeSpec(dir) },
+      });
+      expect(result.isError).toBe(true);
+      expect(parseToolResult(result).error).toContain(
+        "Spec.pdf is a dangling symlink",
+      );
     });
   });
 });

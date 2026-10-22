@@ -5,7 +5,7 @@
  * reads or writes is resolved through symlinks and checked against the roots.
  */
 
-import { lstatSync, readdirSync, realpathSync } from "node:fs";
+import { lstatSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig } from "./config.js";
 
@@ -29,16 +29,32 @@ export function allowedRoots(): string[] {
   return roots;
 }
 
-function assertInsideRoots(real: string, original: string, label: string) {
-  const roots = allowedRoots();
-  const inside = roots.some((root) => {
+function isInsideRoots(real: string, roots: string[]): boolean {
+  return roots.some((root) => {
     const rel = relative(root, real);
     return (
       rel === "" ||
       (!rel.startsWith(".." + sep) && rel !== ".." && !isAbsolute(rel))
     );
   });
-  if (!inside) {
+}
+
+/**
+ * A hard link shares its inode with a file that may live outside the roots,
+ * and realpath can't tell, so refuse regular files with more than one link.
+ */
+function assertNotHardLinked(real: string, original: string, label: string) {
+  const st = statSync(real);
+  if (st.isFile() && st.nlink > 1) {
+    throw new Error(
+      `${label} has ${st.nlink} hard links and may alias a file outside the allowed roots: ${original}`,
+    );
+  }
+}
+
+function assertInsideRoots(real: string, original: string, label: string) {
+  const roots = allowedRoots();
+  if (!isInsideRoots(real, roots)) {
     throw new Error(
       `${label} is outside the allowed roots: ${original}` +
         (real !== original ? ` (resolves to ${real})` : "") +
@@ -65,6 +81,7 @@ export function resolveReadPath(path: string, label: string): string {
     throw new Error(`${label} not found: ${path}`, { cause: err });
   }
   assertInsideRoots(real, path, label);
+  assertNotHardLinked(real, path, label);
   return real;
 }
 
@@ -84,6 +101,7 @@ export function resolveWritePath(path: string, label: string): string {
     try {
       const real = join(realpathSync.native(current), ...missing);
       assertInsideRoots(real, path, label);
+      if (missing.length === 0) assertNotHardLinked(real, path, label);
       return real;
     } catch (err) {
       if (!isNotFound(err)) throw err;
@@ -108,18 +126,49 @@ export function resolveWritePath(path: string, label: string): string {
 }
 
 /**
- * TLC loads a Java class named after any module it finds next to the spec,
- * so a .class file in the spec directory would run arbitrary code in this
- * unsandboxed process. Refuse to run TLC on such a directory.
+ * SANY, TLC, PlusCal and TLATeX open files in the spec directory that the
+ * server never sees by name: EXTENDS/INSTANCE modules on the read side, and
+ * SpecTE, TTrace, .cfg, .tex/.dvi/.pdf files on the write side. Refuse to run
+ * them unless every entry stays inside the roots:
+ * - no .class files, which TLC loads and executes as module overrides;
+ * - no symlinks resolving outside the roots, and no dangling symlinks;
+ * - no hard-linked regular files.
+ * The scan isn't recursive: none of these tools look in subdirectories.
  */
-export function assertNoJavaOverrides(specDir: string): void {
-  const classes = readdirSync(specDir).filter((f) =>
-    f.toLowerCase().endsWith(".class"),
-  );
-  if (classes.length > 0) {
+export function assertSafeSpecDir(specDir: string): void {
+  const roots = allowedRoots();
+  const problems: string[] = [];
+  for (const name of readdirSync(specDir)) {
+    const entry = join(specDir, name);
+    if (name.toLowerCase().endsWith(".class")) {
+      problems.push(`${name} is a Java class file`);
+      continue;
+    }
+    const st = lstatSync(entry);
+    if (st.isSymbolicLink()) {
+      let real: string;
+      try {
+        real = realpathSync.native(entry);
+      } catch (err) {
+        if (!isNotFound(err)) throw err;
+        problems.push(`${name} is a dangling symlink`);
+        continue;
+      }
+      if (!isInsideRoots(real, roots)) {
+        problems.push(`${name} links outside the allowed roots (${real})`);
+        continue;
+      }
+      const target = statSync(real);
+      if (target.isFile() && target.nlink > 1) {
+        problems.push(`${name} links to a hard-linked file`);
+      }
+    } else if (st.isFile() && st.nlink > 1) {
+      problems.push(`${name} has ${st.nlink} hard links`);
+    }
+  }
+  if (problems.length > 0) {
     throw new Error(
-      `Refusing to run TLC: ${specDir} contains Java class files (${classes.join(", ")}), ` +
-        "which TLC would load and execute as module overrides.",
+      `Refusing to run Java tools in ${specDir}: ${problems.join("; ")}.`,
     );
   }
 }

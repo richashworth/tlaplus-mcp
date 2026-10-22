@@ -13,15 +13,16 @@ Out of scope: a local attacker who can already edit the server's environment var
 ### Path confinement
 
 - `TLAPLUS_MCP_ROOTS` (colon-separated absolute paths) lists the directories tools may touch. It defaults to `TLC_WORKSPACE`, else the server's working directory. Roots that don't exist are ignored; with none left, every path is refused.
-- Every path a tool reads (`tla_file`, `cfg_file` and the resulting `-config`, `dot_file`, `tlc_output_file`, the `tla://` resources and the workspace) is resolved with `realpath`, following symlinks, and must lie inside a root.
-- Every path a tool writes (`output_file`, `dump_path` and the `.dot` TLC appends, the `tla_state_graph` JSON, the in-place `pcal_translate` target) is resolved the same way; for a file that doesn't exist yet, its deepest existing ancestor is resolved and checked. Dangling symlinks are refused, since a write would follow them.
+- Every path a tool reads (`tla_file`, `cfg_file` and the resulting `-config`, `dot_file`, `tlc_output_file`, the `tla://` resources and the workspace) is resolved with `realpath`, following symlinks, and must lie inside a root. Regular files with more than one hard link are refused, since realpath can't tell whether a hard link aliases a file outside the roots.
+- Every path a tool writes (`output_file`, `dump_path` and the `.dot` TLC appends, the `tla_state_graph` JSON, the in-place `pcal_translate` target) is resolved the same way, hard-link check included; for a file that doesn't exist yet, its deepest existing ancestor is resolved and checked. Dangling symlinks are refused, since a write would follow them.
 - A missing path outside the roots is reported as outside the roots, not as missing, so tools can't be used to probe for files.
-- Files TLC, PlusCal and TLATeX create on their own (trace files, `SpecTE.*`, `.cfg`, `.tex`/`.pdf`) land in the spec's directory, which is inside a root.
+- SANY, TLC, PlusCal and TLATeX also open files in the spec's directory that the server never sees by name: `EXTENDS`/`INSTANCE` modules on the read side, and trace files, `SpecTE.*`, `.cfg`, `.tex`/`.dvi`/`.pdf` on the write side. Before running any of them, the server scans that directory (not recursively; none of these tools look in subdirectories) and refuses if any entry is a symlink resolving outside the roots, a dangling symlink, a hard-linked regular file or a `.class` file. Symlinks that stay inside the roots are fine.
+- `tlc_generate_trace_spec` only reports the two file names TLC uses (`<Spec>_SpecTE.tla` and `SpecTE.tla`, with their `.cfg`) in the spec's directory, and never takes a path from TLC's output.
 - Temporary files stay under `os.tmpdir()`: each TLC run gets a private `-metadir`, `tla_evaluate` a private directory, and each Java process a private `java.io.tmpdir` (where SANY extracts the standard modules and resolves them from).
 
 ### Code execution through TLC
 
-- TLC loads a Java class named after any module it finds next to the spec and calls its methods as operator overrides. An agent that can write a `.class` file into a root could therefore run arbitrary code in the unsandboxed JVM. The TLC tools refuse to run when the spec's directory contains any `.class` file.
+- TLC loads a Java class named after any module it finds next to the spec and calls its methods as operator overrides. An agent that can write a `.class` file into a root could therefore run arbitrary code in the unsandboxed JVM. The spec-directory scan refuses any `.class` file.
 - `extra_args` is an allowlist of TLC flags with fixed value shapes (`-workers N|auto`, `-depth N`, `-seed N`, `-aril N`, `-dfid N`, `-fp N`, `-fpbits N`, `-fpmem N`, `-maxSetSize N`, `-coverage N`, `-checkpoint N`, `-simulate num=N`, `-deadlock`, `-continue`, `-difftrace`, `-nowarning`). No accepted flag takes a path, so `extra_args` cannot redirect TLC's reads or writes (`-dump`, `-metadir`, `-userFile`, `-config`, `-simulate file=`, ...).
 - `tla_evaluate` only accepts module names matching `[A-Za-z_][A-Za-z0-9_]*`, and runs in a fresh directory so `EXTENDS` can't pick up planted modules.
 - Java, `pdflatex`/`latex` and `java -version` are started with an argv array and no shell.
@@ -39,8 +40,7 @@ Out of scope: a local attacker who can already edit the server's environment var
 
 ## Residual risks
 
-- Path checks and the subsequent I/O are not atomic. A process that can modify a root concurrently could swap in a symlink between the check and the write. The agent's sandboxed shell usually can write to the roots, so keep roots narrow.
-- Files TLC writes on its own in the spec directory are not checked individually; a pre-planted symlink with exactly the name TLC will write (for example `SpecTE.tla`) would be followed.
+- Checks and I/O are not atomic. A link (or `.class` file) planted in the spec directory or another write target after the check but while Java runs would be followed. The agent's sandboxed shell usually can write to the roots, so keep roots narrow. Future hardening: copy the spec directory's `.tla`/`.cfg` files into a private `mkdtemp` directory, run Java there, and copy each output back through the write check, so Java never touches the real directory during a run.
 - `TLC_JAVA_OPTS` is trusted. Pointing `-DTLA-Library` at a directory the agent can write re-opens the `.class` override path, since TLC loads overrides from library paths too.
 - `tla_tex` runs LaTeX on text derived from the spec. TeX Live's default restricted `\write18` limits shell escape to a whitelist, but the server doesn't enforce that.
 - Within the roots, tools read and overwrite files freely; that is their purpose.

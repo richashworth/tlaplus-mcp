@@ -94,7 +94,7 @@ All tools return structured JSON with a `raw_output` field for fallback. Errors 
 
 `extra_args` on the TLC tools accepts only these flags: `-workers N|auto`, `-depth N`, `-seed N`, `-aril N`, `-dfid N`, `-fp N`, `-fpbits N`, `-fpmem N`, `-maxSetSize N`, `-coverage N`, `-checkpoint N`, `-simulate num=N`, `-deadlock`, `-continue`, `-difftrace`, `-nowarning`. Anything else is rejected.
 
-TLC loads Java classes found next to a spec as operator overrides, so the TLC tools refuse to run when the spec's directory contains `.class` files.
+The Java tools also open and create files in the spec's directory by names the server never sees (imported modules, `SpecTE.*`, TLATeX output), so they refuse to run when that directory contains a symlink leading outside the roots, a dangling symlink, a hard-linked file or a `.class` file (TLC loads those as operator overrides).
 
 ## Development
 

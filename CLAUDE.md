@@ -44,7 +44,7 @@ npx vitest run src/lib/
 - All tool handlers use `formatToolResponse()` / `formatToolError()` from `src/lib/tool-helpers.ts`
 - Tool registration follows: `export function registerToolName(server: McpServer): void`
 - Zod schemas for parameter validation; `absolutePath` schema enforces absolute paths
-- **Every file path a tool reads or writes goes through `resolveReadPath` / `resolveWritePath` (`src/lib/paths.ts`)**, which confine it to `TLAPLUS_MCP_ROOTS`; use the returned real path for the I/O. TLC tools also call `assertNoJavaOverrides` on the spec directory. See `SECURITY.md`
+- **Every file path a tool reads or writes goes through `resolveReadPath` / `resolveWritePath` (`src/lib/paths.ts`)**, which confine it to `TLAPLUS_MCP_ROOTS`; use the returned real path for the I/O. Every Java-backed tool also calls `assertSafeSpecDir` on the spec directory before running, because SANY/TLC/PlusCal/TLATeX open files there by names we never see. See `SECURITY.md`
 - `extra_args` is an allowlist (`ALLOWED_EXTRA_ARGS` in `src/lib/process.ts`); never pass a flag that takes a path
 - Java is spawned with an argv array and no shell
 - Dependencies are pinned exactly (`.npmrc` has `save-exact`, `ignore-scripts`); pick versions at least 7 days old

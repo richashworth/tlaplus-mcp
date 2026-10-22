@@ -53,6 +53,6 @@ export async function passthroughPathsMock() {
       return p;
     },
     resolveWritePath: (p: string) => p,
-    assertNoJavaOverrides: () => {},
+    assertSafeSpecDir: () => {},
   };
 }

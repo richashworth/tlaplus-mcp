@@ -15,7 +15,7 @@ import {
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
 import {
-  assertNoJavaOverrides,
+  assertSafeSpecDir,
   resolveReadPath,
   resolveWritePath,
 } from "../lib/paths.js";
@@ -95,7 +95,7 @@ export function registerTlcCheck(server: McpServer): void {
         const outputFile = resolveWritePath(params.output_file, "output_file");
         const cwd = dirname(tlaFile);
         const specName = basename(tlaFile);
-        assertNoJavaOverrides(cwd);
+        assertSafeSpecDir(cwd);
 
         const args: string[] = ["-modelcheck", "-tool"];
 

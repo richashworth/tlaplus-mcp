@@ -7,7 +7,11 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
-import { resolveReadPath, resolveWritePath } from "../lib/paths.js";
+import {
+  assertSafeSpecDir,
+  resolveReadPath,
+  resolveWritePath,
+} from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
@@ -64,6 +68,7 @@ export function registerPcalTranslate(server: McpServer): void {
       try {
         // Translated in place, so this is a write as well as a read.
         const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        assertSafeSpecDir(dirname(tlaFile));
         const outputFile =
           output_file && resolveWritePath(output_file, "output_file");
         const args: string[] = [];
