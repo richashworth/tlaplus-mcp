@@ -30,7 +30,7 @@ npx vitest run src/lib/
 
 - `src/index.ts` — Entry point (stdio transport, graceful shutdown)
 - `src/server.ts` — Server factory, registers all 9 tools + resources
-- `src/lib/` — Core infra: Java detection, subprocess spawning, config, schemas, shared helpers
+- `src/lib/` — Core infra: Java detection and jar verification, subprocess spawning, path confinement, config, schemas, shared helpers
 - `src/parsers/` — Output parsers for TLC stdout, TLA+ values, DOT graphs, CFG files
 - `src/tools/` — 9 MCP tool handlers (tlc_check, tlc_simulate, tla_parse, tla_evaluate, pcal_translate, tlc_coverage, tla_state_graph, tlc_generate_trace_spec, tla_tex)
 - `src/resources/` — MCP resources (spec listing, file reading, latest output)
@@ -44,6 +44,11 @@ npx vitest run src/lib/
 - All tool handlers use `formatToolResponse()` / `formatToolError()` from `src/lib/tool-helpers.ts`
 - Tool registration follows: `export function registerToolName(server: McpServer): void`
 - Zod schemas for parameter validation; `absolutePath` schema enforces absolute paths
+- **Every file path a tool reads or writes goes through `resolveReadPath` / `resolveWritePath` (`src/lib/paths.ts`)**, which confine it to `TLAPLUS_MCP_ROOTS`; use the returned real path for the I/O. TLC tools also call `assertNoJavaOverrides` on the spec directory. See `SECURITY.md`
+- `extra_args` is an allowlist (`ALLOWED_EXTRA_ARGS` in `src/lib/process.ts`); never pass a flag that takes a path
+- Java is spawned with an argv array and no shell
+- Dependencies are pinned exactly (`.npmrc` has `save-exact`, `ignore-scripts`); pick versions at least 7 days old
+- Tool unit tests mock `lib/paths.js` with `passthroughPathsMock()` from `src/test-utils.ts`
 - **ESLint** + **Prettier** enforced via pre-commit hook (husky + lint-staged) and CI
 - Run `npm run lint:fix && npm run format` to fix issues locally
 
@@ -51,7 +56,9 @@ npx vitest run src/lib/
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `TLC_JAR_PATH` | Path to tla2tools.jar | Auto-downloads to `~/.tlaplus-mcp/lib/` |
+| `TLC_JAR_PATH` | Path to tla2tools.jar (required; never downloaded) | none |
+| `TLC_JAR_SHA256` | Expected jar SHA-256, overriding the pinned v1.7.4 value | pinned |
+| `TLAPLUS_MCP_ROOTS` | Colon-separated absolute dirs tools may read/write | `TLC_WORKSPACE` or cwd |
 | `TLC_JAVA_OPTS` | JVM options | `-Xmx4g -XX:+UseParallelGC` |
 | `TLC_TIMEOUT` | Max seconds per TLC run | `300` |
 | `TLC_WORKSPACE` | Base directory for specs | cwd |

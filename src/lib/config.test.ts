@@ -10,6 +10,7 @@ describe("loadConfig", () => {
     delete process.env.TLC_JAVA_OPTS;
     delete process.env.TLC_TIMEOUT;
     delete process.env.TLC_WORKSPACE;
+    delete process.env.TLAPLUS_MCP_ROOTS;
   });
 
   afterEach(() => {
@@ -62,5 +63,16 @@ describe("loadConfig", () => {
   it("reads TLC_WORKSPACE", () => {
     process.env.TLC_WORKSPACE = "/my/specs";
     expect(loadConfig().workspace).toBe("/my/specs");
+  });
+
+  it("defaults roots to the workspace", () => {
+    expect(loadConfig().roots).toEqual([process.cwd()]);
+    process.env.TLC_WORKSPACE = "/my/specs";
+    expect(loadConfig().roots).toEqual(["/my/specs"]);
+  });
+
+  it("splits TLAPLUS_MCP_ROOTS on colons", () => {
+    process.env.TLAPLUS_MCP_ROOTS = "/a:/b::/c";
+    expect(loadConfig().roots).toEqual(["/a", "/b", "/c"]);
   });
 });
