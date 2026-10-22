@@ -12,7 +12,7 @@ Out of scope: a local attacker who can already edit the server's environment var
 
 ### Path confinement
 
-- `TLAPLUS_MCP_ROOTS` (colon-separated absolute paths) lists the directories tools may touch. It defaults to `TLC_WORKSPACE`, else the server's working directory. Roots that don't exist are ignored; with none left, every path is refused.
+- `TLAPLUS_MCP_ROOTS` (colon-separated absolute paths) lists the directories tools may touch. It defaults to `TLC_WORKSPACE`, else the server's working directory; when it is set and `TLC_WORKSPACE` isn't, the workspace defaults to its first entry. Roots that don't exist are ignored; with none left, every path is refused.
 - Every path a tool reads (`tla_file`, `cfg_file` and the resulting `-config`, `dot_file`, `tlc_output_file`, the `tla://` resources and the workspace) is resolved with `realpath`, following symlinks, and must lie inside a root. Regular files with more than one hard link are refused, since realpath can't tell whether a hard link aliases a file outside the roots.
 - Every path a tool writes (`output_file`, `dump_path` and the `.dot` TLC appends, the `tla_state_graph` JSON, the in-place `pcal_translate` target) is resolved the same way, hard-link check included; for a file that doesn't exist yet, its deepest existing ancestor is resolved and checked. Dangling symlinks are refused, since a write would follow them.
 - A missing path outside the roots is reported as outside the roots, not as missing, so tools can't be used to probe for files.

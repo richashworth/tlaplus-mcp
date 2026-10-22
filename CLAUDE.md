@@ -61,7 +61,7 @@ npx vitest run src/lib/
 | `TLAPLUS_MCP_ROOTS` | Colon-separated absolute dirs tools may read/write | `TLC_WORKSPACE` or cwd |
 | `TLC_JAVA_OPTS` | JVM options | `-Xmx4g -XX:+UseParallelGC` |
 | `TLC_TIMEOUT` | Max seconds per TLC run | `300` |
-| `TLC_WORKSPACE` | Base directory for specs | cwd |
+| `TLC_WORKSPACE` | Base directory for specs and `tla://` resources | first root, else cwd |
 
 ## Key Dependencies
 

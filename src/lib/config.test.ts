@@ -75,4 +75,21 @@ describe("loadConfig", () => {
     process.env.TLAPLUS_MCP_ROOTS = "/a:/b::/c";
     expect(loadConfig().roots).toEqual(["/a", "/b", "/c"]);
   });
+
+  it("defaults the workspace to the first root", () => {
+    process.env.TLAPLUS_MCP_ROOTS = "/a:/b";
+    expect(loadConfig().workspace).toBe("/a");
+  });
+
+  it("prefers TLC_WORKSPACE over the first root", () => {
+    process.env.TLAPLUS_MCP_ROOTS = "/a:/b";
+    process.env.TLC_WORKSPACE = "/b";
+    expect(loadConfig().workspace).toBe("/b");
+  });
+
+  it("treats an empty TLAPLUS_MCP_ROOTS as unset", () => {
+    process.env.TLAPLUS_MCP_ROOTS = "";
+    expect(loadConfig().roots).toEqual([process.cwd()]);
+    expect(loadConfig().workspace).toBe(process.cwd());
+  });
 });

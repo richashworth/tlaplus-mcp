@@ -90,7 +90,7 @@ All tools return structured JSON with a `raw_output` field for fallback. Errors 
 | `TLAPLUS_MCP_ROOTS` | Colon-separated absolute directories the tools may read and write. Paths are resolved through symlinks; anything outside is refused | `TLC_WORKSPACE`, else the current working directory |
 | `TLC_JAVA_OPTS` | JVM options | `-Xmx4g -XX:+UseParallelGC` |
 | `TLC_TIMEOUT` | Max seconds per TLC run | `300` |
-| `TLC_WORKSPACE` | Base directory for specs and the `tla://` resources | Current working directory |
+| `TLC_WORKSPACE` | Base directory for specs and the `tla://` resources | The first entry of `TLAPLUS_MCP_ROOTS`, else the current working directory |
 
 `extra_args` on the TLC tools accepts only these flags: `-workers N|auto`, `-depth N`, `-seed N`, `-aril N`, `-dfid N`, `-fp N`, `-fpbits N`, `-fpmem N`, `-maxSetSize N`, `-coverage N`, `-checkpoint N`, `-simulate num=N`, `-deadlock`, `-continue`, `-difftrace`, `-nowarning`. Anything else is rejected.
 
