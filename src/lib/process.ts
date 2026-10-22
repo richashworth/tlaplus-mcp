@@ -26,29 +26,57 @@ export interface RunJavaResult {
   timedOut: boolean;
 }
 
-/**
- * TLC flags that are already managed by explicit tool parameters.
- * Allowing these via extra_args would bypass validation or cause conflicts.
- */
-const BLOCKED_EXTRA_ARGS = [
-  "-dump", // managed via generate_states/dump_path
-  "-dumptrace", // writes trace to arbitrary disk paths
-  "-metadir", // could redirect metadata to arbitrary paths
-  "-userfile", // could write to arbitrary paths
-  "-tlafile", // could overwrite arbitrary files
-];
+const UINT = /^\d+$/;
+const POSITIVE = /^[1-9]\d*$/;
 
 /**
- * Validate extra_args against blocked flags.
- * Throws if any blocked flag is found.
+ * TLC flags accepted in extra_args, mapped to the shape of their value
+ * (null for flags that take none). Anything else is rejected, so extra_args
+ * can never name a file path or change where TLC reads or writes.
  */
+const ALLOWED_EXTRA_ARGS = new Map<string, RegExp | null>([
+  ["-workers", /^(?:[1-9]\d*|auto)$/],
+  ["-depth", UINT],
+  ["-seed", /^-?\d+$/],
+  ["-aril", /^-?\d+$/],
+  ["-dfid", UINT],
+  ["-fp", UINT],
+  ["-fpbits", UINT],
+  ["-fpmem", /^\d+(?:\.\d+)?$/],
+  ["-maxSetSize", POSITIVE],
+  ["-coverage", POSITIVE],
+  ["-checkpoint", UINT],
+  ["-simulate", /^num=[1-9]\d*$/],
+  ["-deadlock", null],
+  ["-continue", null],
+  ["-difftrace", null],
+  ["-noGenerateSpecTE", null],
+  ["-nowarning", null],
+]);
+
+export const EXTRA_ARGS_DESCRIPTION =
+  "Additional TLC flags. Only these are accepted, each followed by its value where it takes one: " +
+  "-workers N|auto, -depth N, -seed N, -aril N, -dfid N, -fp N, -fpbits N, -fpmem N, " +
+  "-maxSetSize N, -coverage N, -checkpoint N, -simulate num=N, -deadlock, -continue, " +
+  "-difftrace, -noGenerateSpecTE, -nowarning";
+
+/** Validate extra_args against the allowlist. Throws on any other token. */
 export function sanitizeExtraArgs(args: string[]): string[] {
-  for (const arg of args) {
-    const normalized = arg.toLowerCase();
-    for (const blocked of BLOCKED_EXTRA_ARGS) {
-      if (normalized === blocked || normalized.startsWith(blocked + "=")) {
+  for (let i = 0; i < args.length; i++) {
+    const flag = args[i];
+    if (!ALLOWED_EXTRA_ARGS.has(flag)) {
+      throw new Error(
+        `Flag "${flag}" is not allowed in extra_args. Allowed: ${[
+          ...ALLOWED_EXTRA_ARGS.keys(),
+        ].join(", ")}`,
+      );
+    }
+    const shape = ALLOWED_EXTRA_ARGS.get(flag);
+    if (shape) {
+      const value = args[++i];
+      if (value === undefined || !shape.test(value)) {
         throw new Error(
-          `Flag "${arg}" is not allowed in extra_args (use the dedicated tool parameter instead)`,
+          `Flag "${flag}" in extra_args needs a value matching ${shape}, got ${JSON.stringify(value)}`,
         );
       }
     }

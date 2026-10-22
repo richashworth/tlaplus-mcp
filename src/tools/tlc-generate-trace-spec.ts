@@ -4,7 +4,11 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJava, sanitizeExtraArgs } from "../lib/process.js";
+import {
+  runJava,
+  sanitizeExtraArgs,
+  EXTRA_ARGS_DESCRIPTION,
+} from "../lib/process.js";
 import { dirname, basename, join } from "node:path";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -37,7 +41,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional TLC arguments"),
+        .describe(EXTRA_ARGS_DESCRIPTION),
     },
     async ({ tla_file, cfg_file, monolith, extra_args }) => {
       try {

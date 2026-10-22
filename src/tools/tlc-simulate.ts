@@ -7,7 +7,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename, join } from "node:path";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { runJava, sanitizeExtraArgs } from "../lib/process.js";
+import {
+  runJava,
+  sanitizeExtraArgs,
+  EXTRA_ARGS_DESCRIPTION,
+} from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
 import {
@@ -72,7 +76,7 @@ export function registerTlcSimulate(server: McpServer): void {
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional raw arguments to pass to TLC"),
+        .describe(EXTRA_ARGS_DESCRIPTION),
     },
     async (params) => {
       try {

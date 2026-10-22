@@ -7,7 +7,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { dirname, basename, join } from "node:path";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { runJava, sanitizeExtraArgs } from "../lib/process.js";
+import {
+  runJava,
+  sanitizeExtraArgs,
+  EXTRA_ARGS_DESCRIPTION,
+} from "../lib/process.js";
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
 import {
@@ -76,7 +80,7 @@ export function registerTlcCheck(server: McpServer): void {
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional raw arguments to pass to TLC"),
+        .describe(EXTRA_ARGS_DESCRIPTION),
       output_file: absolutePath.describe(
         "Required absolute path. Raw TLC output is written here so it doesn't flood the agent context. Response contains the output_file path; callers Read the file when they need the raw text.",
       ),
