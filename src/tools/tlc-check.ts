@@ -79,7 +79,7 @@ export function registerTlcCheck(server: McpServer): void {
         .string()
         .optional()
         .describe(
-          "Override directory path for DOT state graph dump (default: <cwd>/states). Parent directories are created if needed.",
+          "Path prefix for the DOT state graph dump: TLC writes <dump_path>.dot (default prefix: <spec dir>/states, so states.dot). Parent directories are created if needed.",
         ),
       extra_args: z
         .array(z.string())

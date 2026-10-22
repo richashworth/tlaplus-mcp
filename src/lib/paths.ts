@@ -52,13 +52,18 @@ function assertNotHardLinked(real: string, original: string, label: string) {
   }
 }
 
+// Refusals name the roots but not how to widen them: that is the user's call.
+function rootsHint(roots: string[]): string {
+  return `Allowed roots: ${roots.join(", ") || "(none)"}; ask the user to change them.`;
+}
+
 function assertInsideRoots(real: string, original: string, label: string) {
   const roots = allowedRoots();
   if (!isInsideRoots(real, roots)) {
     throw new Error(
       `${label} is outside the allowed roots: ${original}` +
         (real !== original ? ` (resolves to ${real})` : "") +
-        `. Allowed roots: ${roots.join(", ") || "(none)"}. Set TLAPLUS_MCP_ROOTS to change them.`,
+        `. ${rootsHint(roots)}`,
     );
   }
 }
@@ -168,7 +173,7 @@ export function assertSafeSpecDir(specDir: string): void {
   }
   if (problems.length > 0) {
     throw new Error(
-      `Refusing to run Java tools in ${specDir}: ${problems.join("; ")}.`,
+      `Refusing to run Java tools in ${specDir}: ${problems.join("; ")}. ${rootsHint(roots)}`,
     );
   }
 }

@@ -102,6 +102,19 @@ describe("path confinement", () => {
       ).toThrow(/outside the allowed roots/);
     });
 
+    it("names the roots but not how to widen them", () => {
+      let message = "";
+      try {
+        resolveReadPath(join(outside, "Secret.tla"), "TLA+ file");
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toMatch(
+        new RegExp(`Allowed roots: ${root}; ask the user to change them\\.$`),
+      );
+      expect(message).not.toContain("TLAPLUS_MCP_ROOTS");
+    });
+
     it("refuses everything when no root exists", () => {
       process.env.TLAPLUS_MCP_ROOTS = join(base, "nope");
       expect(() =>
@@ -233,6 +246,9 @@ describe("path confinement", () => {
       writeFileSync(join(root, "A.class"), "");
       symlinkSync(join(outside, "nope"), join(root, "B.tla"));
       expect(() => assertSafeSpecDir(root)).toThrow(/A\.class.*; B\.tla/);
+      expect(() => assertSafeSpecDir(root)).toThrow(
+        /ask the user to change them\.$/,
+      );
     });
   });
 });
