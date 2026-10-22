@@ -104,6 +104,22 @@ describe("sanitizeExtraArgs", () => {
     expect(() => sanitizeExtraArgs([flag])).toThrow(/not allowed/);
   });
 
+  it.each([
+    ["-dump", "use tlc_check with generate_states / dump_path instead"],
+    ["-DUMP=dot", "use tlc_check with generate_states / dump_path instead"],
+    ["-config", "use the cfg_file parameter instead"],
+    ["-generateSpecTE", "use the tlc_generate_trace_spec tool instead"],
+    ["-nomonolith", "use tlc_generate_trace_spec with monolith: false instead"],
+  ])("points %s to its dedicated parameter", (flag, route) => {
+    expect(() => sanitizeExtraArgs([flag])).toThrow(`; ${route}.`);
+  });
+
+  it("gives no route for a flag without a dedicated parameter", () => {
+    expect(() => sanitizeExtraArgs(["-metadir"])).toThrow(
+      /^Flag "-metadir" is not allowed in extra_args\. Allowed:/,
+    );
+  });
+
   it("includes the flag name in the error message", () => {
     expect(() => sanitizeExtraArgs(["-dump"])).toThrow('"-dump"');
   });

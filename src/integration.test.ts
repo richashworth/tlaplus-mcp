@@ -577,7 +577,9 @@ Back to state 2
         },
       });
       expect(result.isError).toBe(true);
-      expect(parseToolResult(result).error).toContain("not allowed");
+      expect(parseToolResult(result).error).toContain(
+        'Flag "-dump" is not allowed in extra_args; use tlc_check with generate_states / dump_path instead',
+      );
     });
 
     it("refuses to run TLC next to a Java class file", async () => {

@@ -62,15 +62,24 @@ export const EXTRA_ARGS_DESCRIPTION =
   "-maxSetSize N, -coverage N, -checkpoint N, -simulate num=N, -deadlock, -continue, " +
   "-difftrace, -nowarning";
 
+/** Refused flags that a tool parameter covers, keyed by lowercased flag. */
+const DEDICATED_ROUTES = new Map<string, string>([
+  ["-dump", "use tlc_check with generate_states / dump_path instead"],
+  ["-config", "use the cfg_file parameter instead"],
+  ["-generatespecte", "use the tlc_generate_trace_spec tool instead"],
+  ["-nomonolith", "use tlc_generate_trace_spec with monolith: false instead"],
+]);
+
 /** Validate extra_args against the allowlist. Throws on any other token. */
 export function sanitizeExtraArgs(args: string[]): string[] {
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (!ALLOWED_EXTRA_ARGS.has(flag)) {
+      const route = DEDICATED_ROUTES.get(flag.toLowerCase().split("=")[0]);
       throw new Error(
-        `Flag "${flag}" is not allowed in extra_args. Allowed: ${[
-          ...ALLOWED_EXTRA_ARGS.keys(),
-        ].join(", ")}`,
+        `Flag "${flag}" is not allowed in extra_args` +
+          (route ? `; ${route}` : "") +
+          `. Allowed: ${[...ALLOWED_EXTRA_ARGS.keys()].join(", ")}`,
       );
     }
     const shape = ALLOWED_EXTRA_ARGS.get(flag);
