@@ -9,15 +9,15 @@ import {
   sanitizeExtraArgs,
   EXTRA_ARGS_DESCRIPTION,
 } from "../lib/process.js";
-import { dirname, basename, join } from "node:path";
+import { dirname, basename, join, resolve } from "node:path";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { absolutePath } from "../lib/schemas.js";
+import { assertNoJavaOverrides, resolveReadPath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "../lib/tool-helpers.js";
 
 export function registerTlcGenerateTraceSpec(server: McpServer): void {
@@ -45,8 +45,9 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
     },
     async ({ tla_file, cfg_file, monolith, extra_args }) => {
       try {
-        validateFileExists(tla_file, "TLA+ file");
-        const dir = dirname(tla_file);
+        const specFile = resolveReadPath(tla_file, "TLA+ file");
+        const dir = dirname(specFile);
+        assertNoJavaOverrides(dir);
         const args: string[] = [];
 
         args.push("-generateSpecTE");
@@ -58,7 +59,10 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         args.push("-tool", "-modelcheck");
 
         if (cfg_file) {
-          args.push("-config", cfg_file);
+          args.push(
+            "-config",
+            resolveReadPath(resolve(dir, cfg_file), "Config file"),
+          );
         }
 
         if (extra_args) {
@@ -70,7 +74,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         const metaDir = mkdtempSync(join(tmpdir(), "tlc-meta-"));
         args.push("-metadir", metaDir);
 
-        args.push(tla_file);
+        args.push(specFile);
 
         let result;
         try {
@@ -90,7 +94,7 @@ export function registerTlcGenerateTraceSpec(server: McpServer): void {
         const output = combineOutput(result);
 
         // Look for generated SpecTE files
-        const baseName = basename(tla_file, ".tla");
+        const baseName = basename(specFile, ".tla");
         const specTeTla = join(dir, `${baseName}_SpecTE.tla`);
         const specTeCfg = join(dir, `${baseName}_SpecTE.cfg`);
 

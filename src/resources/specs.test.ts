@@ -5,6 +5,10 @@ vi.mock("../lib/config.js", () => ({
   loadConfig: () => ({ workspace: "/mock/workspace" }),
 }));
 
+vi.mock("../lib/paths.js", () => ({
+  resolveReadPath: (p: string) => p,
+}));
+
 // We need to test the handler logic, so we capture it via a mock McpServer
 function captureResourceHandlers(registerFn: (server: any) => void) {
   const handlers = new Map<string, Function>();

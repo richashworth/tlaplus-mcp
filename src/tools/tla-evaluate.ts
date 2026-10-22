@@ -7,9 +7,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writeFileSync, unlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { absolutePath } from "../lib/schemas.js";
+import { resolveWritePath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
@@ -53,9 +54,19 @@ export function registerTlaEvaluate(server: McpServer): void {
           );
         }
       }
+      let outputFile: string | undefined;
+      try {
+        outputFile =
+          output_file && resolveWritePath(output_file, "output_file");
+      } catch (err: unknown) {
+        return formatToolError(err);
+      }
+
       const id = randomUUID().replace(/-/g, "").slice(0, 12);
       const moduleName = `TlaEval_${id}`;
-      const dir = tmpdir();
+      // A private directory, so EXTENDS can't pick up modules planted in the
+      // shared tmpdir and TLC's states/ metadata is cleaned up with it.
+      const dir = mkdtempSync(join(tmpdir(), "tla-eval-"));
       const tlaPath = join(dir, `${moduleName}.tla`);
       const cfgPath = join(dir, `${moduleName}.cfg`);
 
@@ -76,7 +87,14 @@ export function registerTlaEvaluate(server: McpServer): void {
 
         const result = await runJava({
           className: "tlc2.TLC",
-          args: ["-tool", "-config", cfgPath, tlaPath],
+          args: [
+            "-tool",
+            "-config",
+            cfgPath,
+            "-metadir",
+            join(dir, "states"),
+            tlaPath,
+          ],
           cwd: dir,
           timeout: 30,
         });
@@ -128,21 +146,15 @@ export function registerTlaEvaluate(server: McpServer): void {
           status: error ? "error" : "success",
           result: evaluated,
           error,
-          ...writeOrInline(output, output_file),
+          ...writeOrInline(output, outputFile),
         });
       } catch (err: unknown) {
         return formatToolError(err);
       } finally {
-        // Clean up temp files
         try {
-          unlinkSync(tlaPath);
+          rmSync(dir, { recursive: true, force: true });
         } catch {
-          /* ignore */
-        }
-        try {
-          unlinkSync(cfgPath);
-        } catch {
-          /* ignore */
+          /* best-effort */
         }
       }
     },

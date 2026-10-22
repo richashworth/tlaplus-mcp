@@ -17,6 +17,10 @@ vi.mock("../lib/process.js", () => ({
   },
 }));
 
+vi.mock("../lib/paths.js", async () =>
+  (await import("../test-utils.js")).passthroughPathsMock(),
+);
+
 vi.mock("../lib/schemas.js", () => ({
   absolutePath: {
     describe: () => ({ _def: {} }),

@@ -20,11 +20,8 @@ import {
   type HappyPathEntry,
 } from "../parsers/happy-paths.js";
 import { absolutePath } from "../lib/schemas.js";
-import {
-  formatToolResponse,
-  formatToolError,
-  validateFileExists,
-} from "../lib/tool-helpers.js";
+import { resolveReadPath, resolveWritePath } from "../lib/paths.js";
+import { formatToolResponse, formatToolError } from "../lib/tool-helpers.js";
 
 export function registerTlaStateGraph(server: McpServer): void {
   server.tool(
@@ -89,7 +86,12 @@ export function registerTlaStateGraph(server: McpServer): void {
           throw new Error("output_file is required for json format");
         }
         // After the checks above, output_file is guaranteed defined whenever format === "json".
-        const jsonOutputFile = output_file as string;
+        const jsonOutputFile = (output_file &&
+          resolveWritePath(output_file, "output_file")) as string;
+        const cfgPath = cfg_file && resolveReadPath(cfg_file, "CFG file");
+        const tlcOutputPath =
+          tlc_output_file &&
+          resolveReadPath(tlc_output_file, "TLC output file");
 
         // -- traces_only mode: build graph from TLC output alone ---------------
         if (traces_only) {
@@ -99,9 +101,8 @@ export function registerTlaStateGraph(server: McpServer): void {
 
           const tlcOutputStr =
             tlc_output ??
-            (tlc_output_file
-              ? (validateFileExists(tlc_output_file, "TLC output file"),
-                fs.readFileSync(tlc_output_file, "utf-8"))
+            (tlcOutputPath
+              ? fs.readFileSync(tlcOutputPath, "utf-8")
               : undefined);
           if (!tlcOutputStr) {
             throw new Error(
@@ -124,9 +125,8 @@ export function registerTlaStateGraph(server: McpServer): void {
           }
 
           let invariants: string[] = [];
-          if (cfg_file) {
-            validateFileExists(cfg_file, "CFG file");
-            const cfgContent = fs.readFileSync(cfg_file, "utf-8");
+          if (cfgPath) {
+            const cfgContent = fs.readFileSync(cfgPath, "utf-8");
             const cfg = parseCfg(cfgContent);
             invariants = [...cfg.invariants, ...cfg.properties];
           }
@@ -167,12 +167,8 @@ export function registerTlaStateGraph(server: McpServer): void {
         if (!dot_file) {
           throw new Error("dot_file is required when traces_only is false");
         }
-        validateFileExists(dot_file, "DOT file");
-        if (cfg_file) validateFileExists(cfg_file, "CFG file");
-        if (tlc_output_file)
-          validateFileExists(tlc_output_file, "TLC output file");
-
-        const dotContent = fs.readFileSync(dot_file, "utf-8");
+        const dotPath = resolveReadPath(dot_file, "DOT file");
+        const dotContent = fs.readFileSync(dotPath, "utf-8");
         const graph = parseDot(dotContent);
 
         const nodeCount = Object.keys(graph.states).length;
@@ -225,8 +221,8 @@ export function registerTlaStateGraph(server: McpServer): void {
 
         // Parse CFG if provided
         let invariants: string[] = [];
-        if (cfg_file) {
-          const cfgContent = fs.readFileSync(cfg_file, "utf-8");
+        if (cfgPath) {
+          const cfgContent = fs.readFileSync(cfgPath, "utf-8");
           const cfg = parseCfg(cfgContent);
           invariants = [...cfg.invariants, ...cfg.properties];
         }
@@ -235,9 +231,7 @@ export function registerTlaStateGraph(server: McpServer): void {
         let violations: ViolationTrace[] = [];
         const tlcOutputStr =
           tlc_output ??
-          (tlc_output_file
-            ? fs.readFileSync(tlc_output_file, "utf-8")
-            : undefined);
+          (tlcOutputPath ? fs.readFileSync(tlcOutputPath, "utf-8") : undefined);
         if (tlcOutputStr) {
           violations = parseTlcViolationTraces(tlcOutputStr, graph.states);
         }

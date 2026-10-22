@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { dirname, basename, join } from "node:path";
+import { dirname, basename, join, resolve } from "node:path";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import {
@@ -15,12 +15,16 @@ import {
 import { parseTlcOutput } from "../parsers/tlc-output.js";
 import { absolutePath } from "../lib/schemas.js";
 import {
+  assertNoJavaOverrides,
+  resolveReadPath,
+  resolveWritePath,
+} from "../lib/paths.js";
+import {
   defaultCfgPath,
   combineOutput,
   deriveStatus,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
 } from "../lib/tool-helpers.js";
 
 export function registerTlcCheck(server: McpServer): void {
@@ -87,14 +91,19 @@ export function registerTlcCheck(server: McpServer): void {
     },
     async (params) => {
       try {
-        validateFileExists(params.tla_file, "TLA+ file");
-        const cwd = dirname(params.tla_file);
-        const specName = basename(params.tla_file);
+        const tlaFile = resolveReadPath(params.tla_file, "TLA+ file");
+        const outputFile = resolveWritePath(params.output_file, "output_file");
+        const cwd = dirname(tlaFile);
+        const specName = basename(tlaFile);
+        assertNoJavaOverrides(cwd);
 
         const args: string[] = ["-modelcheck", "-tool"];
 
         // Config file
-        const cfgFile = params.cfg_file ?? defaultCfgPath(params.tla_file);
+        const cfgFile = resolveReadPath(
+          resolve(cwd, params.cfg_file ?? defaultCfgPath(tlaFile)),
+          "Config file",
+        );
         args.push("-config", cfgFile);
 
         // Workers
@@ -130,7 +139,12 @@ export function registerTlcCheck(server: McpServer): void {
         // Generate state graph
         let dumpFile: string | undefined;
         if (params.generate_states) {
-          const dumpPath = params.dump_path ?? join(cwd, "states");
+          // TLC writes <dump_path>.dot, so both names must stay in the roots.
+          const dumpPath = resolveWritePath(
+            resolve(cwd, params.dump_path ?? "states"),
+            "dump_path",
+          );
+          resolveWritePath(dumpPath + ".dot", "dump_path");
           // Only create parent directories when a custom dump path is specified;
           // the default "states" path is relative to cwd which already exists.
           if (params.dump_path) {
@@ -180,8 +194,8 @@ export function registerTlcCheck(server: McpServer): void {
         // Always write raw TLC output to the required output_file.
         // Returning raw_output inline can flood the caller's context window;
         // callers Read the file when they need the raw text.
-        mkdirSync(dirname(params.output_file), { recursive: true });
-        writeFileSync(params.output_file, output, "utf-8");
+        mkdirSync(dirname(outputFile), { recursive: true });
+        writeFileSync(outputFile, output, "utf-8");
 
         return formatToolResponse({
           status,
@@ -192,7 +206,7 @@ export function registerTlcCheck(server: McpServer): void {
           errors: parsed.errors,
           coverage: parsed.coverage,
           ...(dumpFile ? { dump_file: dumpFile } : {}),
-          output_file: params.output_file,
+          output_file: outputFile,
         });
       } catch (err: unknown) {
         return formatToolError(err);

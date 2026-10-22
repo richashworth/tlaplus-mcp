@@ -9,6 +9,7 @@ import {
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loadConfig } from "../lib/config.js";
+import { resolveReadPath } from "../lib/paths.js";
 
 export function registerResources(server: McpServer): void {
   // tla://specs — list all .tla and .cfg files in the workspace
@@ -20,10 +21,9 @@ export function registerResources(server: McpServer): void {
         "List all .tla and .cfg files in the TLA+ workspace directory",
     },
     (uri) => {
-      const { workspace } = loadConfig();
-
       let files: string[] = [];
       try {
+        const workspace = resolveReadPath(loadConfig().workspace, "Workspace");
         const entries = fs.readdirSync(workspace);
         files = entries
           .filter((f) => f.endsWith(".tla") || f.endsWith(".cfg"))
@@ -76,7 +76,18 @@ export function registerResources(server: McpServer): void {
         };
       }
 
-      const filePath = path.join(workspace, filename);
+      const errorResult = (text: string) => ({
+        contents: [{ uri: uri.href, mimeType: "text/plain", text }],
+      });
+
+      let filePath: string;
+      try {
+        filePath = resolveReadPath(path.join(workspace, filename), "Spec file");
+      } catch (err: unknown) {
+        return errorResult(
+          `Error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
 
       try {
         const content = fs.readFileSync(filePath, "utf-8");
@@ -90,15 +101,7 @@ export function registerResources(server: McpServer): void {
           ],
         };
       } catch {
-        return {
-          contents: [
-            {
-              uri: uri.href,
-              mimeType: "text/plain",
-              text: `Error: file not found: ${filename}`,
-            },
-          ],
-        };
+        return errorResult(`Error: file not found: ${filename}`);
       }
     },
   );
@@ -109,7 +112,20 @@ export function registerResources(server: McpServer): void {
     "tla://output/latest",
     { description: "Read the most recent TLC output file from the workspace" },
     (uri) => {
-      const { workspace } = loadConfig();
+      let workspace: string;
+      try {
+        workspace = resolveReadPath(loadConfig().workspace, "Workspace");
+      } catch (err: unknown) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "text/plain",
+              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
 
       // Search for tlc-output.txt files in workspace and subdirectories
       let latestFile: string | null = null;

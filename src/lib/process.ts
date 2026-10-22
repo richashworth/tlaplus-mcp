@@ -3,6 +3,9 @@
  */
 
 import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { getJarPath } from "./java.js";
 
@@ -50,7 +53,6 @@ const ALLOWED_EXTRA_ARGS = new Map<string, RegExp | null>([
   ["-deadlock", null],
   ["-continue", null],
   ["-difftrace", null],
-  ["-noGenerateSpecTE", null],
   ["-nowarning", null],
 ]);
 
@@ -58,7 +60,7 @@ export const EXTRA_ARGS_DESCRIPTION =
   "Additional TLC flags. Only these are accepted, each followed by its value where it takes one: " +
   "-workers N|auto, -depth N, -seed N, -aril N, -dfid N, -fp N, -fpbits N, -fpmem N, " +
   "-maxSetSize N, -coverage N, -checkpoint N, -simulate num=N, -deadlock, -continue, " +
-  "-difftrace, -noGenerateSpecTE, -nowarning";
+  "-difftrace, -nowarning";
 
 /** Validate extra_args against the allowlist. Throws on any other token. */
 export function sanitizeExtraArgs(args: string[]): string[] {
@@ -92,7 +94,20 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
   const jarPath = await getJarPath();
   const timeoutSec = opts.timeout ?? config.timeout;
 
+  // SANY extracts the standard modules into java.io.tmpdir and resolves
+  // modules from there, so give each run a private one rather than a shared
+  // directory where modules could be planted. TLC_JAVA_OPTS can override it.
+  const javaTmp = mkdtempSync(join(tmpdir(), "tlaplus-mcp-java-"));
+  const cleanup = () => {
+    try {
+      rmSync(javaTmp, { recursive: true, force: true });
+    } catch {
+      /* best-effort */
+    }
+  };
+
   const javaArgs = [
+    `-Djava.io.tmpdir=${javaTmp}`,
     ...config.javaOpts,
     "-cp",
     jarPath,
@@ -101,9 +116,11 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
   ];
 
   return new Promise<RunJavaResult>((resolve, reject) => {
+    // argv array and no shell: nothing in args is ever shell-interpreted.
     const child = spawn("java", javaArgs, {
       cwd: opts.cwd ?? config.workspace,
       stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
     });
 
     const stdoutChunks: Buffer[] = [];
@@ -129,6 +146,7 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
 
     child.on("close", (code) => {
       clearTimeout(timer);
+      cleanup();
       if (opts.signal) {
         opts.signal.removeEventListener("abort", onAbort);
       }
@@ -142,6 +160,7 @@ export async function runJava(opts: RunJavaOptions): Promise<RunJavaResult> {
 
     child.on("error", (err) => {
       clearTimeout(timer);
+      cleanup();
       if (opts.signal) {
         opts.signal.removeEventListener("abort", onAbort);
       }

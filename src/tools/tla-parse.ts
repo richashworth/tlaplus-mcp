@@ -6,11 +6,11 @@ import { dirname } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJava } from "../lib/process.js";
 import { absolutePath } from "../lib/schemas.js";
+import { resolveReadPath, resolveWritePath } from "../lib/paths.js";
 import {
   combineOutput,
   formatToolResponse,
   formatToolError,
-  validateFileExists,
   writeOrInline,
 } from "../lib/tool-helpers.js";
 
@@ -35,11 +35,13 @@ export function registerTlaParse(server: McpServer): void {
     },
     async ({ tla_file, output_file }) => {
       try {
-        validateFileExists(tla_file, "TLA+ file");
+        const tlaFile = resolveReadPath(tla_file, "TLA+ file");
+        const outputFile =
+          output_file && resolveWritePath(output_file, "output_file");
         const result = await runJava({
           className: "tla2sany.SANY",
-          args: [tla_file],
-          cwd: dirname(tla_file),
+          args: [tlaFile],
+          cwd: dirname(tlaFile),
         });
 
         const output = combineOutput(result);
@@ -109,7 +111,7 @@ export function registerTlaParse(server: McpServer): void {
           errors.push({
             message: `Encountered "${match[1]}" at line ${match[2]}, column ${match[3]}`,
             location: {
-              file: tla_file,
+              file: tlaFile,
               line: parseInt(match[2], 10),
               col: parseInt(match[3], 10),
             },
@@ -133,7 +135,7 @@ export function registerTlaParse(server: McpServer): void {
           valid,
           errors,
           modules_parsed: modulesParsed,
-          ...writeOrInline(output, output_file),
+          ...writeOrInline(output, outputFile),
         });
       } catch (err: unknown) {
         return formatToolError(err);

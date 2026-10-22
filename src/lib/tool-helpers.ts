@@ -8,7 +8,7 @@
  * - formatting tool responses and errors
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { RunJavaResult } from "./process.js";
 import type { TlcResult } from "../parsers/tlc-output.js";
@@ -31,13 +31,6 @@ export function deriveStatus(
   if (parsed.violations.length > 0) return "violation";
   if (timedOut || parsed.errors.length > 0) return "error";
   return "success";
-}
-
-/** Validate that a file exists, throwing a descriptive error if not. */
-export function validateFileExists(filePath: string, label: string): void {
-  if (!existsSync(filePath)) {
-    throw new Error(`${label} not found: ${filePath}`);
-  }
 }
 
 /** Format a successful tool response as MCP content. */

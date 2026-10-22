@@ -72,7 +72,6 @@ describe("sanitizeExtraArgs", () => {
       "-deadlock",
       "-difftrace",
       "-continue",
-      "-noGenerateSpecTE",
       "-coverage",
       "2",
       "-maxSetSize",
